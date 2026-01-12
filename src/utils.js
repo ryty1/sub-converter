@@ -69,6 +69,8 @@ export function base64FromBinary(binaryString) {
 export function base64ToBinary(base64String) {
 	const base64Chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 	let binaryString = '';
+	// 支持 URL-safe Base64：将 - 替换为 +，将 _ 替换为 /
+	base64String = base64String.replace(/-/g, '+').replace(/_/g, '/');
 	base64String = base64String.replace(/=+$/, ''); // 去掉末尾的 '='
 
 	for (let i = 0; i < base64String.length; i += 4) {
