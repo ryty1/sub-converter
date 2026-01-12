@@ -1,4 +1,4 @@
-import {checkStartsWith} from "../utils.js";
+import { checkStartsWith } from "../utils.js";
 // 定义语言包
 const translations = {
   'zh-CN': {
@@ -80,28 +80,32 @@ const translations = {
     jsonValidationErrors: 'JSON验证错误',
     // 规则名称和出站名称的翻译
     outboundNames: {
-      'Auto Select': '⚡ 自动选择',
+      'Auto Select': '♻️ 自动选择',
       'Node Select': '🚀 节点选择',
+      'Manual Switch': '☑️ 手动切换',
       'Fall Back': '🐟 漏网之鱼',
-      'Ad Block': '🛑 广告拦截',
-      'AI Services': '💬 AI 服务',
+      'Ad Block': '🛑 全球拦截',
+      'App Purify': '🍃 应用净化',
+      'Google FCM': '📢 谷歌FCM',
+      'AI Services': '🤖 OpenAi',
+      'Antigravity': '🛸 Antigravity',
       'Bilibili': '📺 哔哩哔哩',
       'Youtube': '📹 油管视频',
+      'Netflix': '🎥 奈飞视频',
+      'Streaming': '🌍 国外媒体',
       'Google': '🔍 谷歌服务',
       'Private': '🏠 私有网络',
-      'Location:CN': '🔒 国内服务',
-      'Telegram': '📲 电报消息',
+      'Location:CN': '🎯 全球直连',
+      'Telegram': '📲 电报信息',
       'Github': '🐱 Github',
       'Microsoft': 'Ⓜ️ 微软服务',
-      'Apple': '🍏 苹果服务',
+      'Apple': '🍎 苹果服务',
       'Social Media': '🌐 社交媒体',
-      'Streaming': '🎬 流媒体',
       'Gaming': '🎮 游戏平台',
       'Education': '📚 教育资源',
       'Financial': '💰 金融服务',
       'Cloud Services': '☁️ 云服务',
       'Non-China': '🌐 非中国',
-      'Manual Switch': '🖐️ 手动切换',
       'GLOBAL': 'GLOBAL'
     },
     groupByCountry: '按国家分组',
@@ -186,7 +190,7 @@ const translations = {
     invalidJSON: 'Invalid JSON format',
     allJSONValid: 'All JSON rules are valid!',
     jsonValidationErrors: 'JSON validation errors',
-    outboundNames:{
+    outboundNames: {
       'Auto Select': '⚡ Auto Select',
       'Node Select': '🚀 Node Select',
       'Fall Back': '🐟 Fall Back',
@@ -438,13 +442,13 @@ let currentLang = 'zh-CN';
 
 // 设置语言
 export function setLanguage(lang) {
-  if(translations[lang]) {
+  if (translations[lang]) {
     currentLang = lang;
-  } else if(checkStartsWith(lang, 'en')) {
+  } else if (checkStartsWith(lang, 'en')) {
     currentLang = 'en-US';
-  } else if(checkStartsWith(lang, 'fa')) {
+  } else if (checkStartsWith(lang, 'fa')) {
     currentLang = 'fa';
-  } else if(checkStartsWith(lang, 'ru')) {
+  } else if (checkStartsWith(lang, 'ru')) {
     currentLang = 'ru';
   } else {
     currentLang = 'zh-CN';
@@ -455,7 +459,7 @@ export function setLanguage(lang) {
 export function t(key) {
   const keys = key.split('.');
   let value = translations[currentLang];
-  
+
   // 逐级查找翻译值
   for (const k of keys) {
     value = value?.[k];
@@ -481,6 +485,6 @@ export function getDefaultRules() {
 }
 
 // 获取出站集
-export function getOutbounds(){
+export function getOutbounds() {
   return translations[currentLang].outboundNames;
 }
