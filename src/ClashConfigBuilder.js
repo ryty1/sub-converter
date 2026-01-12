@@ -3,6 +3,7 @@ import { CLASH_CONFIG, generateRules, generateClashRuleSets, getOutbounds, PREDE
 import { BaseConfigBuilder } from './BaseConfigBuilder.js';
 import { DeepCopy, parseCountryFromNodeName } from './utils.js';
 import { t } from './i18n/index.js';
+import { parseACL4SSRConfig, matchNodeFilter, DEFAULT_ACL4SSR_CONFIG_URL } from './ACL4SSRParser.js';
 
 export class ClashConfigBuilder extends BaseConfigBuilder {
     constructor(inputString, selectedRules, customRules, baseConfig, lang, userAgent, groupByCountry) {
@@ -14,6 +15,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         this.customRules = customRules;
         this.countryGroupNames = [];
         this.manualGroupName = null;
+        this.acl4ssrConfig = null;
+        // 使用 ACL4SSR 远程配置
+        this.useACL4SSR = true;
     }
 
     getProxies() {
@@ -25,7 +29,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
     }
 
     convertProxy(proxy) {
-        switch(proxy.type) {
+        switch (proxy.type) {
             case 'shadowsocks':
                 const ssConfig = {
                     name: proxy.tag,
@@ -44,32 +48,32 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     // 处理插件选项
                     if (proxy.plugin_opts) {
                         const opts = proxy.plugin_opts;
-                        
+
                         // 确保处理所有可能的参数
                         if (opts.mode !== undefined) {
                             ssConfig['plugin-opts'].mode = opts.mode;
                         }
-                        
+
                         if (opts.host !== undefined) {
                             ssConfig['plugin-opts'].host = opts.host;
                         }
-                        
+
                         if (opts.path !== undefined) {
                             ssConfig['plugin-opts'].path = opts.path;
                         }
-                        
+
                         if (opts.tls !== undefined) {
                             ssConfig['plugin-opts'].tls = opts.tls;
                         }
-                        
+
                         if (opts.peer !== undefined) {
                             ssConfig['plugin-opts'].peer = opts.peer;
                         }
-                        
+
                         if (opts.mux !== undefined) {
                             ssConfig['plugin-opts'].mux = opts.mux;
                         }
-                        
+
                         if (opts.skip_cert_verify !== undefined) {
                             ssConfig['plugin-opts'].allowInsecure = opts.skip_cert_verify;
                         }
@@ -152,7 +156,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'ws-opts': proxy.transport?.type === 'ws' ? {
                         path: proxy.transport.path,
                         headers: proxy.transport.headers
-                    }: undefined,
+                    } : undefined,
                     'reality-opts': proxy.tls.reality?.enabled ? {
                         'public-key': proxy.tls.reality.public_key,
                         'short-id': proxy.tls.reality.short_id,
@@ -160,7 +164,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'grpc-opts': proxy.transport?.type === 'grpc' ? {
                         'grpc-service-name': proxy.transport.service_name,
                     } : undefined,
-                    tfo : proxy.tcp_fast_open,
+                    tfo: proxy.tcp_fast_open,
                     'skip-cert-verify': !!proxy.tls?.insecure,
                     ...(typeof proxy.udp !== 'undefined' ? { udp: proxy.udp } : {}),
                     ...(proxy.alpn ? { alpn: proxy.alpn } : {}),
@@ -202,7 +206,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'ws-opts': proxy.transport?.type === 'ws' ? {
                         path: proxy.transport.path,
                         headers: proxy.transport.headers
-                    }: undefined,
+                    } : undefined,
                     'reality-opts': proxy.tls.reality?.enabled ? {
                         'public-key': proxy.tls.reality.public_key,
                         'short-id': proxy.tls.reality.short_id,
@@ -210,7 +214,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                     'grpc-opts': proxy.transport?.type === 'grpc' ? {
                         'grpc-service-name': proxy.transport.service_name,
                     } : undefined,
-                    tfo : proxy.tcp_fast_open,
+                    tfo: proxy.tcp_fast_open,
                     'skip-cert-verify': !!proxy.tls?.insecure,
                     ...(proxy.alpn ? { alpn: proxy.alpn } : {}),
                     'flow': proxy.flow ?? undefined,
@@ -259,24 +263,24 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
 
         // Find proxies with the same or partially matching name
         const similarProxies = this.config.proxies.filter(p => p.name.includes(proxy.name));
-    
+
         // Check if there is a proxy with identical data excluding the 'name' field
         const isIdentical = similarProxies.some(p => {
             const { name: _, ...restOfProxy } = proxy; // Exclude the 'name' attribute
             const { name: __, ...restOfP } = p;       // Exclude the 'name' attribute
             return JSON.stringify(restOfProxy) === JSON.stringify(restOfP);
         });
-    
+
         if (isIdentical) {
             // If there is a proxy with identical data, skip adding it
             return;
         }
-    
+
         // If there are proxies with similar names but different data, modify the name
         if (similarProxies.length > 0) {
             proxy.name = `${proxy.name} ${similarProxies.length + 1}`;
         }
-    
+
         // Add the proxy to the configuration
         this.config.proxies.push(proxy);
     }
@@ -325,11 +329,11 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                 t('outboundNames.Auto Select'),
                 ...(this.manualGroupName ? [this.manualGroupName] : []),
                 ...((this.countryGroupNames || []))
-              ]
+            ]
             : [
                 t('outboundNames.Node Select'),
                 ...proxyList
-              ];
+            ];
         const combined = [...directReject, ...base].filter(Boolean);
         const seen = new Set();
         return combined.filter(name => {
@@ -406,7 +410,7 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
 
         const normalize = (s) => typeof s === 'string' ? s.trim() : s;
         const existingNames = new Set((this.config['proxy-groups'] || []).map(g => normalize(g?.name)).filter(Boolean));
-        
+
         const manualProxyNames = proxies.map(p => p?.name).filter(Boolean);
         const manualGroupName = manualProxyNames.length > 0 ? t('outboundNames.Manual Switch') : null;
         if (manualGroupName) {
@@ -467,44 +471,195 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         return generateRules(this.selectedRules, this.customRules);
     }
 
+    /**
+     * 获取并解析 ACL4SSR 远程配置
+     */
+    async fetchACL4SSRConfig() {
+        try {
+            const response = await fetch(DEFAULT_ACL4SSR_CONFIG_URL);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ACL4SSR config: ${response.status}`);
+            }
+            const content = await response.text();
+            this.acl4ssrConfig = parseACL4SSRConfig(content);
+            return this.acl4ssrConfig;
+        } catch (error) {
+            console.error('Error fetching ACL4SSR config:', error);
+            this.useACL4SSR = false;
+            return null;
+        }
+    }
+
+    /**
+     * 根据 ACL4SSR 配置生成代理分组
+     */
+    generateACL4SSRProxyGroups(proxyNames) {
+        if (!this.acl4ssrConfig) return;
+
+        const { proxyGroups } = this.acl4ssrConfig;
+        this.config['proxy-groups'] = [];
+
+        for (const group of proxyGroups) {
+            const clashGroup = {
+                name: group.name,
+                type: group.type === 'url-test' ? 'url-test' : 'select'
+            };
+
+            const proxies = [];
+
+            // 添加引用的分组
+            for (const member of group.members) {
+                proxies.push(member);
+            }
+
+            // 如果有筛选条件，添加匹配的节点
+            if (group.filter) {
+                for (const proxyName of proxyNames) {
+                    if (matchNodeFilter(proxyName, group.filter)) {
+                        proxies.push(proxyName);
+                    }
+                }
+            }
+
+            // 确保分组有节点
+            if (proxies.length === 0 && group.filter) {
+                // 如果筛选后没有节点，添加所有节点
+                proxies.push(...proxyNames);
+            }
+
+            clashGroup.proxies = proxies;
+
+            // URL 测试分组的额外配置
+            if (group.type === 'url-test') {
+                clashGroup.url = group.urlTestConfig?.url || 'http://www.gstatic.com/generate_204';
+                clashGroup.interval = group.urlTestConfig?.interval || 300;
+                clashGroup.lazy = false;
+            }
+
+            this.config['proxy-groups'].push(clashGroup);
+        }
+    }
+
+    /**
+     * 根据 ACL4SSR 配置生成规则
+     */
+    generateACL4SSRRules() {
+        if (!this.acl4ssrConfig) return [];
+
+        const { rulesets } = this.acl4ssrConfig;
+        const ruleProviders = {};
+        const rules = [];
+        let index = 0;
+
+        for (const ruleset of rulesets) {
+            const { group, url } = ruleset;
+
+            // 处理内联规则 (如 []GEOIP,CN)
+            if (url.startsWith('[]')) {
+                const inlineRule = url.substring(2);
+                if (inlineRule === 'FINAL') {
+                    rules.push(`MATCH,${group}`);
+                } else {
+                    rules.push(`${inlineRule},${group}`);
+                }
+                continue;
+            }
+
+            // 从 URL 提取规则集名称
+            const urlParts = url.split('/');
+            let name = urlParts[urlParts.length - 1].replace('.list', '').replace('.txt', '');
+
+            // 确保名称唯一
+            const originalName = name;
+            while (ruleProviders[name]) {
+                name = `${originalName}_${index}`;
+                index++;
+            }
+
+            ruleProviders[name] = {
+                type: 'http',
+                behavior: 'classical',
+                url: url,
+                path: `./ruleset/${name}.yaml`,
+                interval: 86400
+            };
+
+            rules.push(`RULE-SET,${name},${group}`);
+        }
+
+        this.config['rule-providers'] = ruleProviders;
+        return rules;
+    }
+
+    /**
+     * 重写 build 方法以支持 ACL4SSR 配置
+     */
+    async build() {
+        // 首先获取 ACL4SSR 配置
+        if (this.useACL4SSR) {
+            await this.fetchACL4SSRConfig();
+        }
+
+        const customItems = await this.parseCustomItems();
+        this.addCustomItems(customItems);
+
+        if (this.useACL4SSR && this.acl4ssrConfig) {
+            // 使用 ACL4SSR 配置生成分组
+            const proxyNames = this.getProxyList();
+            this.generateACL4SSRProxyGroups(proxyNames);
+        } else {
+            // 使用内置逻辑
+            this.addSelectors();
+        }
+
+        return this.formatConfig();
+    }
+
     formatConfig() {
-        // If remote YAML provided proxy-groups, sanitize their proxy lists to
-        // remove entries that don't exist as proxies or groups.
-        const rules = this.generateRules();
-        const ruleResults = [];
+        if (this.useACL4SSR && this.acl4ssrConfig) {
+            // 使用 ACL4SSR 规则
+            this.config.rules = this.generateACL4SSRRules();
+        } else {
+            // 使用内置规则生成逻辑
+            const rules = this.generateRules();
+            const ruleResults = [];
 
-        const { site_rule_providers, ip_rule_providers } = generateClashRuleSets(this.selectedRules, this.customRules);
-        this.config['rule-providers'] = {
-            ...site_rule_providers,
-            ...ip_rule_providers
-        };
+            const { site_rule_providers, ip_rule_providers } = generateClashRuleSets(this.selectedRules, this.customRules);
+            this.config['rule-providers'] = {
+                ...site_rule_providers,
+                ...ip_rule_providers
+            };
 
-        rules.filter(rule => !!rule.domain_suffix || !!rule.domain_keyword).map(rule => {
-            rule.domain_suffix.forEach(suffix => {
-                ruleResults.push(`DOMAIN-SUFFIX,${suffix},${t('outboundNames.'+ rule.outbound)}`);
+            rules.filter(rule => !!rule.domain_suffix || !!rule.domain_keyword).map(rule => {
+                rule.domain_suffix.forEach(suffix => {
+                    ruleResults.push(`DOMAIN-SUFFIX,${suffix},${t('outboundNames.' + rule.outbound)}`);
+                });
+                rule.domain_keyword.forEach(keyword => {
+                    ruleResults.push(`DOMAIN-KEYWORD,${keyword},${t('outboundNames.' + rule.outbound)}`);
+                });
             });
-            rule.domain_keyword.forEach(keyword => {
-                ruleResults.push(`DOMAIN-KEYWORD,${keyword},${t('outboundNames.'+ rule.outbound)}`);
-            });
-        });
 
-        rules.filter(rule => !!rule.site_rules[0]).map(rule => {
-            rule.site_rules.forEach(site => {
-                ruleResults.push(`RULE-SET,${site},${t('outboundNames.'+ rule.outbound)}`);
+            rules.filter(rule => !!rule.site_rules[0]).map(rule => {
+                rule.site_rules.forEach(site => {
+                    ruleResults.push(`RULE-SET,${site},${t('outboundNames.' + rule.outbound)}`);
+                });
             });
-        });
 
-        rules.filter(rule => !!rule.ip_rules[0]).map(rule => {
-            rule.ip_rules.forEach(ip => {
-                ruleResults.push(`RULE-SET,${ip},${t('outboundNames.'+ rule.outbound)},no-resolve`);
+            rules.filter(rule => !!rule.ip_rules[0]).map(rule => {
+                rule.ip_rules.forEach(ip => {
+                    ruleResults.push(`RULE-SET,${ip},${t('outboundNames.' + rule.outbound)},no-resolve`);
+                });
             });
-        });
 
-        rules.filter(rule => !!rule.ip_cidr).map(rule => {
-            rule.ip_cidr.forEach(cidr => {
-                ruleResults.push(`IP-CIDR,${cidr},${t('outboundNames.'+ rule.outbound)},no-resolve`);
+            rules.filter(rule => !!rule.ip_cidr).map(rule => {
+                rule.ip_cidr.forEach(cidr => {
+                    ruleResults.push(`IP-CIDR,${cidr},${t('outboundNames.' + rule.outbound)},no-resolve`);
+                });
             });
-        });
+
+            this.config.rules = [...ruleResults];
+            this.config.rules.push(`MATCH,${t('outboundNames.Fall Back')}`);
+        }
 
         // Sanitize proxy-groups: ensure their proxy references exist
         const normalize = (s) => typeof s === 'string' ? s.trim() : s;
@@ -528,14 +683,11 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             });
         }
 
-        this.config.rules = [...ruleResults];
-        this.config.rules.push(`MATCH,${t('outboundNames.Fall Back')}`);
-
         return yaml.dump(this.config, {
             lineWidth: -1,
             noRefs: true,
             quotingType: '"',
-            flowLevel: -1 
+            flowLevel: -1
         });
     }
 }
