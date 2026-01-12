@@ -17,27 +17,9 @@ export const UNIFIED_RULES = [
 		ip_rules: []
 	},
 	{
-		name: 'App Purify',
-		outbound: t('outboundNames.App Purify'),
-		site_rules: [],
-		ip_rules: []
-	},
-	{
-		name: 'Google FCM',
-		outbound: t('outboundNames.Google FCM'),
-		site_rules: [],
-		ip_rules: []
-	},
-	{
 		name: 'AI Services',
 		outbound: t('outboundNames.AI Services'),
 		site_rules: ['category-ai-!cn',],
-		ip_rules: []
-	},
-	{
-		name: 'Antigravity',
-		outbound: t('outboundNames.Antigravity'),
-		site_rules: [],
 		ip_rules: []
 	},
 	{
@@ -101,15 +83,9 @@ export const UNIFIED_RULES = [
 		ip_rules: []
 	},
 	{
-		name: 'Netflix',
-		outbound: t('outboundNames.Netflix'),
-		site_rules: ['netflix'],
-		ip_rules: []
-	},
-	{
 		name: 'Streaming',
 		outbound: t('outboundNames.Streaming'),
-		site_rules: ['hulu', 'disney', 'hbo', 'amazon', 'bahamut'],
+		site_rules: ['netflix', 'hulu', 'disney', 'hbo', 'amazon', 'bahamut'],
 		ip_rules: []
 	},
 	{
@@ -147,8 +123,7 @@ export const UNIFIED_RULES = [
 export const PREDEFINED_RULE_SETS = {
 	minimal: ['Location:CN', 'Private', 'Non-China'],
 	balanced: ['Location:CN', 'Private', 'Non-China', 'Github', 'Google', 'Youtube', 'AI Services', 'Telegram'],
-	comprehensive: UNIFIED_RULES.map(rule => rule.name),
-	acl4ssr_zdy: ['Ad Block', 'App Purify', 'Google FCM', 'Microsoft', 'Apple', 'Telegram', 'AI Services', 'Antigravity', 'Youtube', 'Netflix', 'Streaming', 'Github', 'Location:CN', 'Non-China']
+	comprehensive: UNIFIED_RULES.map(rule => rule.name)
 };
 
 
