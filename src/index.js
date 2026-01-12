@@ -22,10 +22,28 @@ async function handleRequest(request) {
         headers: { 'Content-Type': 'text/html' }
       });
     } else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge')) {
-      const inputString = url.searchParams.get('config');
+      let inputString = url.searchParams.get('config');
       let selectedRules = url.searchParams.get('selectedRules');
       let customRules = url.searchParams.get('customRules');
       const groupByCountry = url.searchParams.get('group_by_country') === 'true';
+
+      // 兼容性处理：如果config是一个URL且请求中还有domains/ports参数（可能是未编码的URL导致参数被分离）
+      if (inputString && (inputString.startsWith('http://') || inputString.startsWith('https://'))) {
+        const domains = url.searchParams.get('domains');
+        const ports = url.searchParams.get('ports');
+        // 如果有这些参数，说明可能是URL未编码导致的参数分离，需要重建完整URL
+        if (domains || ports) {
+          const configUrl = new URL(inputString);
+          if (domains && !configUrl.searchParams.has('domains')) {
+            configUrl.searchParams.set('domains', domains);
+          }
+          if (ports && !configUrl.searchParams.has('ports')) {
+            configUrl.searchParams.set('ports', ports);
+          }
+          inputString = configUrl.toString();
+        }
+      }
+
       // 获取语言参数，如果为空则使用默认值
       let lang = url.searchParams.get('lang') || 'zh-CN';
       // Get custom UserAgent
