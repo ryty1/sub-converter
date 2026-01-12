@@ -84,8 +84,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                 if (proxy.tls?.utls?.fingerprint) {
                     ssConfig['client-fingerprint'] = proxy.tls.utls.fingerprint;
                 } else if (proxy.transport?.type === 'ws' || proxy.plugin) {
-                    // 对于WebSocket或插件配置，添加默认的chrome指纹
-                    ssConfig['client-fingerprint'] = 'chrome';
+                    // 对于WebSocket或插件配置，添加默认的firefox指纹
+                    ssConfig['client-fingerprint'] = 'firefox';
                 }
 
                 // 为plugin-opts添加特殊标记，以便在YAML转储时以内联方式显示
