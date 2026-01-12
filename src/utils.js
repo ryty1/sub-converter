@@ -198,69 +198,24 @@ export function parseUrlParams(url) {
 
 	const [paramsOnly, ...fragmentParts] = paramsPart.split('#');
 
-	// 已知的 VLESS/VMess/Trojan/Hysteria URL 参数名（不包括 path 本身）
-	const knownParams = new Set([
-		'type', 'security', 'encryption', 'sni', 'fp', 'host', 'serviceName',
-		'pbk', 'sid', 'flow', 'alpn', 'allowInsecure', 'insecure', 'allow_insecure',
-		'headerType', 'mode', 'tls', 'obfs', 'obfs-host', 'plugin',
-		'congestion', 'auth', 'up', 'down', 'obfs-password', 'peer',
-		'mux', 'skip-cert-verify', 'udp', 'network'
-	]);
-
-	// 手动提取 path 参数，因为 path 值中可能包含 & 符号
+	// 在使用 URLSearchParams 之前，先提取 path 参数
+	// 因为 URLSearchParams 会把 path 中的 %26 (编码的 &) 解码后当作参数分隔符
 	let pathValue = null;
-	let cleanedParamsOnly = paramsOnly;
-
-	// 查找 path= 的位置
-	const pathIndex = paramsOnly.indexOf('path=');
-	if (pathIndex !== -1) {
-		const pathStart = pathIndex + 5; // 跳过 'path='
-
-		// 找到 path 值的结束位置
-		// 只有当 & 后面跟着的是已知参数名时，才认为是参数分隔符
-		let pathEnd = paramsOnly.length;
-		const afterPath = paramsOnly.substring(pathStart);
-
-		// 遍历查找下一个真正的参数
-		let searchPos = 0;
-		while (searchPos < afterPath.length) {
-			const ampIndex = afterPath.indexOf('&', searchPos);
-			if (ampIndex === -1) break;
-
-			// 检查 & 后面的内容
-			const remaining = afterPath.substring(ampIndex + 1);
-			const eqIndex = remaining.indexOf('=');
-			if (eqIndex > 0) {
-				const potentialParam = remaining.substring(0, eqIndex);
-				if (knownParams.has(potentialParam)) {
-					// 找到了真正的参数分隔符
-					pathEnd = pathStart + ampIndex;
-					break;
-				}
-			}
-			searchPos = ampIndex + 1;
-		}
-
-		// 提取原始 path 值
-		const rawPath = paramsOnly.substring(pathStart, pathEnd);
-		try {
-			pathValue = decodeURIComponent(rawPath);
-		} catch (e) {
-			pathValue = rawPath;
-		}
-
-		// 从参数字符串中移除 path 参数
-		const beforePath = paramsOnly.substring(0, pathIndex);
-		const afterPathParams = paramsOnly.substring(pathEnd);
-		cleanedParamsOnly = (beforePath + afterPathParams).replace(/^&|&&/g, '&').replace(/^&|&$/g, '');
+	const pathMatch = paramsOnly.match(/path=([^&]*(?:%26[^&]*)*)/);
+	if (pathMatch) {
+		pathValue = pathMatch[1];
 	}
 
-	const searchParams = new URLSearchParams(cleanedParamsOnly);
+	const searchParams = new URLSearchParams(paramsOnly);
 	const params = Object.fromEntries(searchParams.entries());
 
-	// 将手动提取的 path 添加回 params
-	if (pathValue !== null) {
-		params.path = pathValue;
+	// 恢复正确的 path 值（保留了 %26 编码的 & 符号）
+	if (pathValue) {
+		try {
+			params.path = decodeURIComponent(pathValue);
+		} catch (e) {
+			params.path = pathValue;
+		}
 	}
 
 	let name = fragmentParts.length > 0 ? fragmentParts.join('#') : '';
@@ -298,7 +253,7 @@ export function createTransportConfig(params) {
 	return {
 		type: params.type,
 		path: params.path ?? undefined,
-		...(params.host && { 'headers': { 'Host': params.host } }),
+		...(params.host && { 'headers': { 'host': params.host } }),
 		...(params.type === 'grpc' && {
 			service_name: params.serviceName ?? undefined,
 		})
