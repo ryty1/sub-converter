@@ -523,8 +523,11 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                 }
             }
 
-            // 如果筛选后没有节点且没有成员引用，保持为空（不再添加所有节点）
-            // 原逻辑会将所有节点添加到没有匹配的分组中，这是错误的
+            // 如果筛选后没有节点且没有成员引用，跳过这个分组（不创建空分组）
+            // 空分组会导致 Clash 报错: 'use' or 'proxies' missing
+            if (proxies.length === 0) {
+                continue;
+            }
 
             clashGroup.proxies = proxies;
 
