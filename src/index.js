@@ -21,65 +21,6 @@ async function handleRequest(request) {
       return new Response(generateHtml('', '', '', '', url.origin), {
         headers: { 'Content-Type': 'text/html' }
       });
-    } else if (url.pathname === '/sub') {
-      // 标准 subconverter API 兼容端点
-      const target = url.searchParams.get('target') || 'clash';
-      const subscriptionUrl = url.searchParams.get('url');
-      const userAgent = request.headers.get('User-Agent') || 'curl/7.74.0';
-
-      if (!subscriptionUrl) {
-        return new Response('Missing url parameter', { status: 400 });
-      }
-
-      // 获取订阅内容
-      let inputString = '';
-      const urls = subscriptionUrl.split('|').filter(u => u.trim());
-
-      for (const subUrl of urls) {
-        try {
-          const response = await fetch(subUrl.trim(), {
-            headers: { 'User-Agent': userAgent }
-          });
-          if (response.ok) {
-            const content = await response.text();
-            inputString += content + '\n';
-          }
-        } catch (e) {
-          console.warn(`Failed to fetch ${subUrl}:`, e);
-        }
-      }
-
-      if (!inputString.trim()) {
-        return new Response('Failed to fetch subscription content', { status: 400 });
-      }
-
-      // 根据 target 选择 ConfigBuilder
-      let configBuilder;
-      if (target === 'clash' || target === 'mixed') {
-        configBuilder = new ClashConfigBuilder(inputString, 'minimal', [], null, 'zh-CN', userAgent, false);
-      } else if (target === 'singbox') {
-        configBuilder = new SingboxConfigBuilder(inputString, 'minimal', [], null, 'zh-CN', userAgent, false);
-      } else if (target === 'surge') {
-        configBuilder = new SurgeConfigBuilder(inputString, 'minimal', [], null, 'zh-CN', userAgent, false);
-      } else {
-        // 默认返回 base64 编码的原始内容
-        return new Response(encodeBase64(inputString), {
-          headers: { 'Content-Type': 'text/plain; charset=utf-8' }
-        });
-      }
-
-      const config = await configBuilder.build();
-
-      const headers = {
-        'Content-Type': target === 'singbox'
-          ? 'application/json; charset=utf-8'
-          : 'text/yaml; charset=utf-8'
-      };
-
-      return new Response(
-        target === 'singbox' ? JSON.stringify(config, null, 2) : config,
-        { headers }
-      );
     } else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge')) {
       const inputString = url.searchParams.get('config');
       let selectedRules = url.searchParams.get('selectedRules');
