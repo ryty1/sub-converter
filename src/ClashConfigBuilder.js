@@ -262,7 +262,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         this.config.proxies = this.config.proxies || [];
 
         // Find proxies with the same or partially matching name
-        const similarProxies = this.config.proxies.filter(p => p.name.includes(proxy.name));
+        // 检查是否有完全相同名称的代理（而不是包含关系）
+        const similarProxies = this.config.proxies.filter(p => p.name === proxy.name);
 
         // Check if there is a proxy with identical data excluding the 'name' field
         const isIdentical = similarProxies.some(p => {
