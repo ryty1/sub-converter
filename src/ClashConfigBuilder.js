@@ -513,7 +513,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             }
 
             // 如果有筛选条件，添加匹配的节点
-            if (group.filter) {
+            // 但是：只有当分组没有成员引用时（即国家分组），才添加具体节点
+            // 应用策略组（有成员引用的）不应该包含具体节点
+            if (group.filter && group.members.length === 0) {
                 for (const proxyName of proxyNames) {
                     if (matchNodeFilter(proxyName, group.filter)) {
                         proxies.push(proxyName);
@@ -521,11 +523,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                 }
             }
 
-            // 确保分组有节点
-            if (proxies.length === 0 && group.filter) {
-                // 如果筛选后没有节点，添加所有节点
-                proxies.push(...proxyNames);
-            }
+            // 如果筛选后没有节点且没有成员引用，保持为空（不再添加所有节点）
+            // 原逻辑会将所有节点添加到没有匹配的分组中，这是错误的
 
             clashGroup.proxies = proxies;
 
