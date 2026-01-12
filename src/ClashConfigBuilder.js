@@ -729,11 +729,17 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             });
         }
 
-        return yaml.dump(this.config, {
+        let yamlOutput = yaml.dump(this.config, {
             lineWidth: -1,
             noRefs: true,
             quotingType: '"',
             flowLevel: -1
         });
+
+        // 修复 YAML 对特殊字符的不必要转义（如 \= 应该是 =）
+        yamlOutput = yamlOutput.replace(/\\=/g, '=');
+        yamlOutput = yamlOutput.replace(/\\&/g, '&');
+
+        return yamlOutput;
     }
 }
