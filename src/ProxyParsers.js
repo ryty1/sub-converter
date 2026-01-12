@@ -300,8 +300,18 @@ class ShadowsocksParser {
       const [basePart, pluginPart] = mainPart.split('?plugin=');
       mainPart = basePart;
 
+      let decodedPluginPart = pluginPart;
+      // 如果 pluginPart 包含编码的分号 %3B，先进行解码
+      if (pluginPart.includes('%3B') || pluginPart.includes('%3b')) {
+        try {
+          decodedPluginPart = decodeURIComponent(pluginPart);
+        } catch (e) {
+          console.warn('Failed to decode plugin part:', e);
+        }
+      }
+
       // 解析插件参数
-      const pluginParams = pluginPart.split(';');
+      const pluginParams = decodedPluginPart.split(';');
       const pluginName = decodeURIComponent(pluginParams[0]);
 
       // 解析插件选项
