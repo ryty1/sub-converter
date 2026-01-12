@@ -687,7 +687,6 @@ class TuicParser {
 class HttpParser {
   static async parse(url, userAgent) {
     try {
-      console.log('[DEBUG HttpParser] Fetching URL:', url);
       let headers = new Headers({
         "User-Agent": userAgent
       });
@@ -699,20 +698,10 @@ class HttpParser {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const text = await response.text();
-      console.log('[DEBUG HttpParser] Response length:', text.length);
-      console.log('[DEBUG HttpParser] Response preview:', text.substring(0, 200));
-
       let decodedText;
       try {
         decodedText = decodeBase64(text.trim());
-        console.log('[DEBUG HttpParser] Base64 decoded, length:', decodedText.length);
-        // Check if the decoded text needs URL decoding (原版逻辑)
-        if (decodedText.includes('%')) {
-          decodedText = decodeURIComponent(decodedText);
-          console.log('[DEBUG HttpParser] URL decoded successfully');
-        }
       } catch (e) {
-        console.log('[DEBUG HttpParser] Base64/URL decode failed:', e.message);
         decodedText = text;
         // Check if the original text needs URL decoding
         if (decodedText.includes('%')) {
@@ -723,14 +712,10 @@ class HttpParser {
           }
         }
       }
-
-      console.log('[DEBUG HttpParser] Final decoded preview:', decodedText.substring(0, 300));
-
       // Try YAML first: if content parses and has proxies, convert to internal objects
       try {
         const parsed = yaml.load(decodedText);
         if (parsed && typeof parsed === 'object' && Array.isArray(parsed.proxies)) {
-          console.log('[DEBUG HttpParser] Parsed as YAML, proxies count:', parsed.proxies.length);
           const proxies = parsed.proxies
             .map(p => convertYamlProxyToObject(p))
             .filter(p => p != null);
@@ -745,15 +730,13 @@ class HttpParser {
           }
         }
       } catch (yamlError) {
-        console.log('[DEBUG HttpParser] Not YAML, treating as subscription lines');
+        console.warn('YAML parsing failed; fallback to line mode:', yamlError?.message || yamlError);
       }
 
       // Fallback: treat as subscription lines
-      const lines = decodedText.split('\n').filter(line => line.trim() !== '');
-      console.log('[DEBUG HttpParser] Returning', lines.length, 'subscription lines');
-      return lines;
+      return decodedText.split('\n').filter(line => line.trim() !== '');
     } catch (error) {
-      console.error('[DEBUG HttpParser] Error:', error);
+      console.error('Error fetching or parsing HTTP(S) content:', error);
       return null;
     }
   }
