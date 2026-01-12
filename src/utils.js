@@ -198,8 +198,16 @@ export function parseUrlParams(url) {
 
 	const [paramsOnly, ...fragmentParts] = paramsPart.split('#');
 
+	// 已知的 VLESS/VMess/Trojan/Hysteria URL 参数名（不包括 path 本身）
+	const knownParams = new Set([
+		'type', 'security', 'encryption', 'sni', 'fp', 'host', 'serviceName',
+		'pbk', 'sid', 'flow', 'alpn', 'allowInsecure', 'insecure', 'allow_insecure',
+		'headerType', 'mode', 'tls', 'obfs', 'obfs-host', 'plugin',
+		'congestion', 'auth', 'up', 'down', 'obfs-password', 'peer',
+		'mux', 'skip-cert-verify', 'udp', 'network'
+	]);
+
 	// 手动提取 path 参数，因为 path 值中可能包含 & 符号
-	// 这会导致 URLSearchParams 错误地将其解析为参数分隔符
 	let pathValue = null;
 	let cleanedParamsOnly = paramsOnly;
 
@@ -209,16 +217,28 @@ export function parseUrlParams(url) {
 		const pathStart = pathIndex + 5; // 跳过 'path='
 
 		// 找到 path 值的结束位置
-		// path 值的结束是：下一个 &key= 模式的位置（其中 key 是一个合法的参数名）
-		// 或者字符串结束
+		// 只有当 & 后面跟着的是已知参数名时，才认为是参数分隔符
 		let pathEnd = paramsOnly.length;
-
-		// 从 pathStart 开始查找下一个参数
-		// 合法的参数分隔符是 &后面跟着参数名=
 		const afterPath = paramsOnly.substring(pathStart);
-		const nextParamMatch = afterPath.match(/&([a-zA-Z][a-zA-Z0-9_-]*)=/);
-		if (nextParamMatch) {
-			pathEnd = pathStart + nextParamMatch.index;
+
+		// 遍历查找下一个真正的参数
+		let searchPos = 0;
+		while (searchPos < afterPath.length) {
+			const ampIndex = afterPath.indexOf('&', searchPos);
+			if (ampIndex === -1) break;
+
+			// 检查 & 后面的内容
+			const remaining = afterPath.substring(ampIndex + 1);
+			const eqIndex = remaining.indexOf('=');
+			if (eqIndex > 0) {
+				const potentialParam = remaining.substring(0, eqIndex);
+				if (knownParams.has(potentialParam)) {
+					// 找到了真正的参数分隔符
+					pathEnd = pathStart + ampIndex;
+					break;
+				}
+			}
+			searchPos = ampIndex + 1;
 		}
 
 		// 提取原始 path 值
