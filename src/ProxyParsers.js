@@ -687,6 +687,7 @@ class TuicParser {
 class HttpParser {
   static async parse(url, userAgent) {
     try {
+      console.log('[DEBUG HttpParser] Fetching URL:', url);
       let headers = new Headers({
         "User-Agent": userAgent
       });
@@ -698,18 +699,26 @@ class HttpParser {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
       const text = await response.text();
+      console.log('[DEBUG HttpParser] Response length:', text.length);
+      console.log('[DEBUG HttpParser] Response preview:', text.substring(0, 200));
+
       let decodedText;
       try {
         decodedText = decodeBase64(text.trim());
+        console.log('[DEBUG HttpParser] Base64 decoded, length:', decodedText.length);
+        console.log('[DEBUG HttpParser] Decoded preview:', decodedText.substring(0, 200));
+
         // Check if the decoded text needs URL decoding (恢复原版逻辑)
         if (decodedText.includes('%')) {
           try {
             decodedText = decodeURIComponent(decodedText);
+            console.log('[DEBUG HttpParser] URL decoded successfully');
           } catch (urlError) {
-            // 忽略 URL 解码错误
+            console.log('[DEBUG HttpParser] URL decode failed, ignoring');
           }
         }
       } catch (e) {
+        console.log('[DEBUG HttpParser] Base64 decode failed:', e.message);
         decodedText = text;
         // Check if the original text needs URL decoding
         if (decodedText.includes('%')) {
