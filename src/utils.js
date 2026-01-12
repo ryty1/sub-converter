@@ -197,16 +197,50 @@ export function parseUrlParams(url) {
 	const paramsPart = remainingParts.join('?');
 
 	const [paramsOnly, ...fragmentParts] = paramsPart.split('#');
-	const searchParams = new URLSearchParams(paramsOnly);
+
+	// 手动提取 path 参数，因为 path 值中可能包含 & 符号
+	// 这会导致 URLSearchParams 错误地将其解析为参数分隔符
+	let pathValue = null;
+	let cleanedParamsOnly = paramsOnly;
+
+	// 查找 path= 的位置
+	const pathIndex = paramsOnly.indexOf('path=');
+	if (pathIndex !== -1) {
+		const pathStart = pathIndex + 5; // 跳过 'path='
+
+		// 找到 path 值的结束位置
+		// path 值的结束是：下一个 &key= 模式的位置（其中 key 是一个合法的参数名）
+		// 或者字符串结束
+		let pathEnd = paramsOnly.length;
+
+		// 从 pathStart 开始查找下一个参数
+		// 合法的参数分隔符是 &后面跟着参数名=
+		const afterPath = paramsOnly.substring(pathStart);
+		const nextParamMatch = afterPath.match(/&([a-zA-Z][a-zA-Z0-9_-]*)=/);
+		if (nextParamMatch) {
+			pathEnd = pathStart + nextParamMatch.index;
+		}
+
+		// 提取原始 path 值
+		const rawPath = paramsOnly.substring(pathStart, pathEnd);
+		try {
+			pathValue = decodeURIComponent(rawPath);
+		} catch (e) {
+			pathValue = rawPath;
+		}
+
+		// 从参数字符串中移除 path 参数
+		const beforePath = paramsOnly.substring(0, pathIndex);
+		const afterPathParams = paramsOnly.substring(pathEnd);
+		cleanedParamsOnly = (beforePath + afterPathParams).replace(/^&|&&/g, '&').replace(/^&|&$/g, '');
+	}
+
+	const searchParams = new URLSearchParams(cleanedParamsOnly);
 	const params = Object.fromEntries(searchParams.entries());
 
-	// 确保 path 参数被正确解码（包括 %26 -> &）
-	if (params.path) {
-		try {
-			params.path = decodeURIComponent(params.path);
-		} catch (e) {
-			// 如果解码失败，保持原值
-		}
+	// 将手动提取的 path 添加回 params
+	if (pathValue !== null) {
+		params.path = pathValue;
 	}
 
 	let name = fragmentParts.length > 0 ? fragmentParts.join('#') : '';
