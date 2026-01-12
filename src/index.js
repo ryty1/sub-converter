@@ -28,9 +28,15 @@ async function handleRequest(request) {
       const groupByCountry = url.searchParams.get('group_by_country') === 'true';
 
       // 兼容性处理：如果config是一个URL且请求中还有domains/ports参数（可能是未编码的URL导致参数被分离）
+      console.log('[DEBUG] Original inputString:', inputString);
+      console.log('[DEBUG] Full URL:', request.url);
+
       if (inputString && (inputString.startsWith('http://') || inputString.startsWith('https://'))) {
         const domains = url.searchParams.get('domains');
         const ports = url.searchParams.get('ports');
+        console.log('[DEBUG] Detected domains param:', domains);
+        console.log('[DEBUG] Detected ports param:', ports);
+
         // 如果有这些参数，说明可能是URL未编码导致的参数分离，需要重建完整URL
         if (domains || ports) {
           const configUrl = new URL(inputString);
@@ -41,6 +47,7 @@ async function handleRequest(request) {
             configUrl.searchParams.set('ports', ports);
           }
           inputString = configUrl.toString();
+          console.log('[DEBUG] Rebuilt inputString:', inputString);
         }
       }
 
