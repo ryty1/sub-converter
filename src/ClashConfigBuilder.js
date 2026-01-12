@@ -549,6 +549,17 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         const { rulesets } = this.acl4ssrConfig;
         const rules = [];
 
+        // Clash/Mihomo 支持的规则类型
+        const supportedRuleTypes = new Set([
+            'DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'DOMAIN-REGEX',
+            'GEOSITE', 'GEOIP', 'IP-CIDR', 'IP-CIDR6', 'IP-ASN',
+            'SRC-GEOIP', 'SRC-IP-CIDR', 'SRC-PORT', 'DST-PORT',
+            'PROCESS-NAME', 'PROCESS-PATH', 'RULE-SET', 'MATCH',
+            'IN-PORT', 'IN-TYPE', 'IN-USER', 'IN-NAME',
+            'SUB-RULE', 'AND', 'OR', 'NOT',
+            'NETWORK'
+        ]);
+
         for (const ruleset of rulesets) {
             const { group, url } = ruleset;
 
@@ -585,8 +596,13 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                                 const ruleType = parts[0].toUpperCase();
                                 const ruleValue = parts[1];
 
+                                // 跳过 Clash 不支持的规则类型
+                                if (!supportedRuleTypes.has(ruleType)) {
+                                    continue;
+                                }
+
                                 // 对于 IP 类规则，可能需要添加 no-resolve
-                                if (ruleType.includes('IP-CIDR') || ruleType === 'GEOIP') {
+                                if (ruleType.includes('IP-CIDR') || ruleType === 'GEOIP' || ruleType === 'IP-ASN') {
                                     if (parts.length > 2 && parts[2].toLowerCase() === 'no-resolve') {
                                         rules.push(`${ruleType},${ruleValue},${group},no-resolve`);
                                     } else {
