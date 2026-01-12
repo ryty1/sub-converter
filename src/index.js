@@ -22,10 +22,32 @@ async function handleRequest(request) {
         headers: { 'Content-Type': 'text/html' }
       });
     } else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge')) {
-      const inputString = url.searchParams.get('config');
+      let inputString = url.searchParams.get('config');
       let selectedRules = url.searchParams.get('selectedRules');
       let customRules = url.searchParams.get('customRules');
       const groupByCountry = url.searchParams.get('group_by_country') === 'true';
+
+      // Support POST for large config
+      if (request.method === 'POST') {
+        try {
+          const contentType = request.headers.get('content-type') || '';
+          if (contentType.includes('application/json')) {
+            const body = await request.json();
+            if (body.config) inputString = body.config;
+            if (body.selectedRules) selectedRules = body.selectedRules;
+            if (body.customRules) customRules = body.customRules;
+          } else {
+            // Treat raw body as config
+            const text = await request.text();
+            if (text && text.trim().length > 0) {
+              inputString = text;
+            }
+          }
+        } catch (e) {
+          console.error('Error reading POST body:', e);
+        }
+      }
+
       // 获取语言参数，如果为空则使用默认值
       let lang = url.searchParams.get('lang') || 'zh-CN';
       // Get custom UserAgent
@@ -269,7 +291,7 @@ async function handleRequest(request) {
       try {
         const urlObj = new URL(shortUrl);
         const pathParts = urlObj.pathname.split('/');
-        
+
         if (pathParts.length < 3) {
           return new Response(t('invalidShortUrl'), { status: 400 });
         }
