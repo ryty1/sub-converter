@@ -541,15 +541,13 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
     }
 
     /**
-     * 根据 ACL4SSR 配置生成规则
+     * 根据 ACL4SSR 配置生成规则（直接展开所有远程规则）
      */
-    generateACL4SSRRules() {
+    async generateACL4SSRRules() {
         if (!this.acl4ssrConfig) return [];
 
         const { rulesets } = this.acl4ssrConfig;
-        const ruleProviders = {};
         const rules = [];
-        let index = 0;
 
         for (const ruleset of rulesets) {
             const { group, url } = ruleset;
@@ -565,29 +563,58 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                 continue;
             }
 
-            // 从 URL 提取规则集名称
-            const urlParts = url.split('/');
-            let name = urlParts[urlParts.length - 1].replace('.list', '').replace('.txt', '');
+            // 远程规则集需要下载并展开
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const content = await response.text();
+                    const ruleLines = content.split('\n');
 
-            // 确保名称唯一
-            const originalName = name;
-            while (ruleProviders[name]) {
-                name = `${originalName}_${index}`;
-                index++;
+                    for (const ruleLine of ruleLines) {
+                        const trimmed = ruleLine.trim();
+                        // 跳过注释和空行
+                        if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith(';')) {
+                            continue;
+                        }
+
+                        // 解析规则格式
+                        if (trimmed.includes(',')) {
+                            // 完整规则格式，直接添加分组
+                            const parts = trimmed.split(',');
+                            if (parts.length >= 2) {
+                                const ruleType = parts[0].toUpperCase();
+                                const ruleValue = parts[1];
+
+                                // 对于 IP 类规则，可能需要添加 no-resolve
+                                if (ruleType.includes('IP-CIDR') || ruleType === 'GEOIP') {
+                                    if (parts.length > 2 && parts[2].toLowerCase() === 'no-resolve') {
+                                        rules.push(`${ruleType},${ruleValue},${group},no-resolve`);
+                                    } else {
+                                        rules.push(`${ruleType},${ruleValue},${group},no-resolve`);
+                                    }
+                                } else {
+                                    rules.push(`${ruleType},${ruleValue},${group}`);
+                                }
+                            }
+                        } else if (trimmed.match(/^[a-zA-Z0-9][\w\-\.]*\.[a-zA-Z]{2,}$/)) {
+                            // 纯域名，作为 DOMAIN-SUFFIX 处理
+                            rules.push(`DOMAIN-SUFFIX,${trimmed},${group}`);
+                        } else if (trimmed.match(/^[\d\.\/]+$/) && trimmed.includes('/')) {
+                            // IP-CIDR 格式
+                            rules.push(`IP-CIDR,${trimmed},${group},no-resolve`);
+                        } else if (trimmed.match(/^[\da-fA-F:\/]+$/) && trimmed.includes(':')) {
+                            // IPv6 CIDR 格式
+                            rules.push(`IP-CIDR6,${trimmed},${group},no-resolve`);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn(`Failed to fetch ruleset from ${url}:`, error);
             }
-
-            ruleProviders[name] = {
-                type: 'http',
-                behavior: 'classical',
-                url: url,
-                path: `./ruleset/${name}.yaml`,
-                interval: 86400
-            };
-
-            rules.push(`RULE-SET,${name},${group}`);
         }
 
-        this.config['rule-providers'] = ruleProviders;
+        // 不使用 rule-providers，直接使用展开的规则
+        delete this.config['rule-providers'];
         return rules;
     }
 
@@ -607,6 +634,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             // 使用 ACL4SSR 配置生成分组
             const proxyNames = this.getProxyList();
             this.generateACL4SSRProxyGroups(proxyNames);
+
+            // 生成 ACL4SSR 规则（异步下载并展开）
+            this.config.rules = await this.generateACL4SSRRules();
         } else {
             // 使用内置逻辑
             this.addSelectors();
@@ -617,8 +647,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
 
     formatConfig() {
         if (this.useACL4SSR && this.acl4ssrConfig) {
-            // 使用 ACL4SSR 规则
-            this.config.rules = this.generateACL4SSRRules();
+            // ACL4SSR 规则已在 build 方法中生成，不需要 rule-providers
+            // 规则已经设置在 this.config.rules 中
         } else {
             // 使用内置规则生成逻辑
             const rules = this.generateRules();
