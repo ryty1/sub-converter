@@ -22,7 +22,28 @@ async function handleRequest(request) {
         headers: { 'Content-Type': 'text/html' }
       });
     } else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge')) {
-      const inputString = url.searchParams.get('config');
+      let inputString = url.searchParams.get('config');
+
+      // Handle unencoded config URLs - reconstruct full URL if needed
+      // When config URL contains query params like ?domains=xxx&ports=443 without encoding,
+      // the &ports=443 part gets parsed as a separate parameter of the main URL
+      if (inputString && inputString.includes('?')) {
+        // Get the known parameters that belong to sub-converter
+        const knownParams = ['config', 'selectedRules', 'customRules', 'group_by_country', 'lang', 'ua', 'configId'];
+        const unknownParams = [];
+
+        // Find parameters that are not recognized by sub-converter
+        for (const [key, value] of url.searchParams.entries()) {
+          if (!knownParams.includes(key)) {
+            unknownParams.push(`${key}=${value}`);
+          }
+        }
+
+        // If there are unknown params, they likely belong to the config URL
+        if (unknownParams.length > 0) {
+          inputString = inputString + '&' + unknownParams.join('&');
+        }
+      }
       let selectedRules = url.searchParams.get('selectedRules');
       let customRules = url.searchParams.get('customRules');
       const groupByCountry = url.searchParams.get('group_by_country') === 'true';
@@ -163,7 +184,24 @@ async function handleRequest(request) {
       return Response.redirect(originalUrl, 302);
     } else if (url.pathname.startsWith('/xray')) {
       // Handle Xray config requests
-      const inputString = url.searchParams.get('config');
+      let inputString = url.searchParams.get('config');
+
+      // Handle unencoded config URLs - reconstruct full URL if needed
+      if (inputString && inputString.includes('?')) {
+        const knownParams = ['config', 'ua'];
+        const unknownParams = [];
+
+        for (const [key, value] of url.searchParams.entries()) {
+          if (!knownParams.includes(key)) {
+            unknownParams.push(`${key}=${value}`);
+          }
+        }
+
+        if (unknownParams.length > 0) {
+          inputString = inputString + '&' + unknownParams.join('&');
+        }
+      }
+
       if (!inputString) {
         return new Response('Missing config parameter', { status: 400 });
       }
