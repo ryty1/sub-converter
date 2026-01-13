@@ -4,7 +4,7 @@
  */
 
 // 默认的 ACL4SSR 配置 URL
-export const DEFAULT_ACL4SSR_CONFIG_URL = 'https://raw.githubusercontent.com/ryty1/ACL4SSR/master/Clash/config/ACL4SSR_ZDY.ini';
+export const DEFAULT_ACL4SSR_CONFIG_URL = 'https://gh-proxy.com/https://raw.githubusercontent.com/ryty1/ACL4SSR/master/Clash/config/ACL4SSR_ZDY.ini';
 
 /**
  * 解析 ACL4SSR .ini 配置文件
