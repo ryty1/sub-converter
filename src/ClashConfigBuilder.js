@@ -3,7 +3,7 @@ import { CLASH_CONFIG, generateRules, generateClashRuleSets, getOutbounds, PREDE
 import { BaseConfigBuilder } from './BaseConfigBuilder.js';
 import { DeepCopy, parseCountryFromNodeName } from './utils.js';
 import { t } from './i18n/index.js';
-import { getEmbeddedACL4SSRConfig, parseACL4SSRConfig, matchNodeFilter } from './ACL4SSRParser.js';
+import { parseACL4SSRConfig, matchNodeFilter, DEFAULT_ACL4SSR_CONFIG_URL } from './ACL4SSRParser.js';
 
 export class ClashConfigBuilder extends BaseConfigBuilder {
     constructor(inputString, selectedRules, customRules, baseConfig, lang, userAgent, groupByCountry) {
@@ -15,11 +15,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         this.customRules = customRules;
         this.countryGroupNames = [];
         this.manualGroupName = null;
-
-        // 使用嵌入的 ACL4SSR 配置
+        this.acl4ssrConfig = null;
+        // 使用 ACL4SSR 远程配置
         this.useACL4SSR = true;
-        const iniContent = getEmbeddedACL4SSRConfig();
-        this.acl4ssrConfig = parseACL4SSRConfig(iniContent);
     }
 
     getProxies() {
@@ -86,8 +84,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                 if (proxy.tls?.utls?.fingerprint) {
                     ssConfig['client-fingerprint'] = proxy.tls.utls.fingerprint;
                 } else if (proxy.transport?.type === 'ws' || proxy.plugin) {
-                    // 对于WebSocket或插件配置，添加默认的chrome指纹
-                    ssConfig['client-fingerprint'] = 'chrome';
+                    // 对于WebSocket或插件配置，添加默认的firefox指纹
+                    ssConfig['client-fingerprint'] = 'firefox';
                 }
 
                 // 为plugin-opts添加特殊标记，以便在YAML转储时以内联方式显示
@@ -264,7 +262,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         this.config.proxies = this.config.proxies || [];
 
         // Find proxies with the same or partially matching name
-        const similarProxies = this.config.proxies.filter(p => p.name.includes(proxy.name));
+        // 检查是否有完全相同名称的代理（而不是包含关系）
+        const similarProxies = this.config.proxies.filter(p => p.name === proxy.name);
 
         // Check if there is a proxy with identical data excluding the 'name' field
         const isIdentical = similarProxies.some(p => {
@@ -473,27 +472,28 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         return generateRules(this.selectedRules, this.customRules);
     }
 
-    // 覆盖父类的 addSelectors 方法，使用 ACL4SSR 分组配置
-    addSelectors() {
-        if (this.useACL4SSR && this.acl4ssrConfig) {
-            const proxyNames = this.getProxyList();
-            this.generateACL4SSRProxyGroups(proxyNames);
-        } else {
-            // 回退到原版逻辑
-            const outbounds = this.getOutboundsList();
-            const proxyList = this.getProxyList();
-            this.addAutoSelectGroup(proxyList);
-            this.addNodeSelectGroup(proxyList);
-            if (this.groupByCountry) {
-                this.addCountryGroups();
+    /**
+     * 获取并解析 ACL4SSR 远程配置
+     */
+    async fetchACL4SSRConfig() {
+        try {
+            const response = await fetch(DEFAULT_ACL4SSR_CONFIG_URL);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch ACL4SSR config: ${response.status}`);
             }
-            this.addOutboundGroups(outbounds, proxyList);
-            this.addCustomRuleGroups(proxyList);
-            this.addFallBackGroup(proxyList);
+            const content = await response.text();
+            this.acl4ssrConfig = parseACL4SSRConfig(content);
+            return this.acl4ssrConfig;
+        } catch (error) {
+            console.error('Error fetching ACL4SSR config:', error);
+            this.useACL4SSR = false;
+            return null;
         }
     }
 
-    // 根据 ACL4SSR 配置生成代理分组
+    /**
+     * 根据 ACL4SSR 配置生成代理分组
+     */
     generateACL4SSRProxyGroups(proxyNames) {
         if (!this.acl4ssrConfig) return;
 
@@ -514,7 +514,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             }
 
             // 如果有筛选条件，添加匹配的节点
-            if (group.filter) {
+            // 但是：只有当分组没有成员引用时（即国家分组），才添加具体节点
+            // 应用策略组（有成员引用的）不应该包含具体节点
+            if (group.filter && group.members.length === 0) {
                 for (const proxyName of proxyNames) {
                     if (matchNodeFilter(proxyName, group.filter)) {
                         proxies.push(proxyName);
@@ -522,7 +524,8 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
                 }
             }
 
-            // 如果筛选后没有节点且没有成员引用，跳过这个分组
+            // 如果筛选后没有节点且没有成员引用，跳过这个分组（不创建空分组）
+            // 空分组会导致 Clash 报错: 'use' or 'proxies' missing
             if (proxies.length === 0) {
                 continue;
             }
@@ -530,9 +533,9 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             clashGroup.proxies = proxies;
 
             // URL 测试分组的额外配置
-            if (group.type === 'url-test' && group.urlTestConfig) {
-                clashGroup.url = group.urlTestConfig.url || 'http://www.gstatic.com/generate_204';
-                clashGroup.interval = group.urlTestConfig.interval || 300;
+            if (group.type === 'url-test') {
+                clashGroup.url = group.urlTestConfig?.url || 'http://www.gstatic.com/generate_204';
+                clashGroup.interval = group.urlTestConfig?.interval || 300;
                 clashGroup.lazy = false;
             }
 
@@ -540,44 +543,172 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
         }
     }
 
+    /**
+     * 根据 ACL4SSR 配置生成规则（直接展开所有远程规则）
+     */
+    async generateACL4SSRRules() {
+        if (!this.acl4ssrConfig) return [];
+
+        const { rulesets } = this.acl4ssrConfig;
+        const rules = [];
+
+        // Clash/Mihomo 支持的规则类型
+        const supportedRuleTypes = new Set([
+            'DOMAIN', 'DOMAIN-SUFFIX', 'DOMAIN-KEYWORD', 'DOMAIN-REGEX',
+            'GEOSITE', 'GEOIP', 'IP-CIDR', 'IP-CIDR6', 'IP-ASN',
+            'SRC-GEOIP', 'SRC-IP-CIDR', 'SRC-PORT', 'DST-PORT',
+            'PROCESS-NAME', 'PROCESS-PATH', 'RULE-SET', 'MATCH',
+            'IN-PORT', 'IN-TYPE', 'IN-USER', 'IN-NAME',
+            'SUB-RULE', 'AND', 'OR', 'NOT',
+            'NETWORK'
+        ]);
+
+        for (const ruleset of rulesets) {
+            const { group, url } = ruleset;
+
+            // 处理内联规则 (如 []GEOIP,CN)
+            if (url.startsWith('[]')) {
+                const inlineRule = url.substring(2);
+                if (inlineRule === 'FINAL') {
+                    rules.push(`MATCH,${group}`);
+                } else {
+                    rules.push(`${inlineRule},${group}`);
+                }
+                continue;
+            }
+
+            // 远程规则集需要下载并展开
+            try {
+                const response = await fetch(url);
+                if (response.ok) {
+                    const content = await response.text();
+                    const ruleLines = content.split('\n');
+
+                    for (const ruleLine of ruleLines) {
+                        const trimmed = ruleLine.trim();
+                        // 跳过注释和空行
+                        if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith(';')) {
+                            continue;
+                        }
+
+                        // 解析规则格式
+                        if (trimmed.includes(',')) {
+                            // 完整规则格式，直接添加分组
+                            const parts = trimmed.split(',');
+                            if (parts.length >= 2) {
+                                const ruleType = parts[0].toUpperCase();
+                                const ruleValue = parts[1];
+
+                                // 跳过 Clash 不支持的规则类型
+                                if (!supportedRuleTypes.has(ruleType)) {
+                                    continue;
+                                }
+
+                                // 对于 IP 类规则，可能需要添加 no-resolve
+                                if (ruleType.includes('IP-CIDR') || ruleType === 'GEOIP' || ruleType === 'IP-ASN') {
+                                    if (parts.length > 2 && parts[2].toLowerCase() === 'no-resolve') {
+                                        rules.push(`${ruleType},${ruleValue},${group},no-resolve`);
+                                    } else {
+                                        rules.push(`${ruleType},${ruleValue},${group},no-resolve`);
+                                    }
+                                } else {
+                                    rules.push(`${ruleType},${ruleValue},${group}`);
+                                }
+                            }
+                        } else if (trimmed.match(/^[a-zA-Z0-9][\w\-\.]*\.[a-zA-Z]{2,}$/)) {
+                            // 纯域名，作为 DOMAIN-SUFFIX 处理
+                            rules.push(`DOMAIN-SUFFIX,${trimmed},${group}`);
+                        } else if (trimmed.match(/^[\d\.\/]+$/) && trimmed.includes('/')) {
+                            // IP-CIDR 格式
+                            rules.push(`IP-CIDR,${trimmed},${group},no-resolve`);
+                        } else if (trimmed.match(/^[\da-fA-F:\/]+$/) && trimmed.includes(':')) {
+                            // IPv6 CIDR 格式
+                            rules.push(`IP-CIDR6,${trimmed},${group},no-resolve`);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.warn(`Failed to fetch ruleset from ${url}:`, error);
+            }
+        }
+
+        // 不使用 rule-providers，直接使用展开的规则
+        delete this.config['rule-providers'];
+        return rules;
+    }
+
+    /**
+     * 重写 build 方法以支持 ACL4SSR 配置
+     */
+    async build() {
+        // 首先获取 ACL4SSR 配置
+        if (this.useACL4SSR) {
+            await this.fetchACL4SSRConfig();
+        }
+
+        const customItems = await this.parseCustomItems();
+        this.addCustomItems(customItems);
+
+        if (this.useACL4SSR && this.acl4ssrConfig) {
+            // 使用 ACL4SSR 配置生成分组
+            const proxyNames = this.getProxyList();
+            this.generateACL4SSRProxyGroups(proxyNames);
+
+            // 生成 ACL4SSR 规则（异步下载并展开）
+            this.config.rules = await this.generateACL4SSRRules();
+        } else {
+            // 使用内置逻辑
+            this.addSelectors();
+        }
+
+        return this.formatConfig();
+    }
+
     formatConfig() {
-        // If remote YAML provided proxy-groups, sanitize their proxy lists to
-        // remove entries that don't exist as proxies or groups.
-        const rules = this.generateRules();
-        const ruleResults = [];
+        if (this.useACL4SSR && this.acl4ssrConfig) {
+            // ACL4SSR 规则已在 build 方法中生成，不需要 rule-providers
+            // 规则已经设置在 this.config.rules 中
+        } else {
+            // 使用内置规则生成逻辑
+            const rules = this.generateRules();
+            const ruleResults = [];
 
-        const { site_rule_providers, ip_rule_providers } = generateClashRuleSets(this.selectedRules, this.customRules);
-        this.config['rule-providers'] = {
-            ...site_rule_providers,
-            ...ip_rule_providers
-        };
+            const { site_rule_providers, ip_rule_providers } = generateClashRuleSets(this.selectedRules, this.customRules);
+            this.config['rule-providers'] = {
+                ...site_rule_providers,
+                ...ip_rule_providers
+            };
 
-        rules.filter(rule => !!rule.domain_suffix || !!rule.domain_keyword).map(rule => {
-            rule.domain_suffix.forEach(suffix => {
-                ruleResults.push(`DOMAIN-SUFFIX,${suffix},${t('outboundNames.' + rule.outbound)}`);
+            rules.filter(rule => !!rule.domain_suffix || !!rule.domain_keyword).map(rule => {
+                rule.domain_suffix.forEach(suffix => {
+                    ruleResults.push(`DOMAIN-SUFFIX,${suffix},${t('outboundNames.' + rule.outbound)}`);
+                });
+                rule.domain_keyword.forEach(keyword => {
+                    ruleResults.push(`DOMAIN-KEYWORD,${keyword},${t('outboundNames.' + rule.outbound)}`);
+                });
             });
-            rule.domain_keyword.forEach(keyword => {
-                ruleResults.push(`DOMAIN-KEYWORD,${keyword},${t('outboundNames.' + rule.outbound)}`);
-            });
-        });
 
-        rules.filter(rule => !!rule.site_rules[0]).map(rule => {
-            rule.site_rules.forEach(site => {
-                ruleResults.push(`RULE-SET,${site},${t('outboundNames.' + rule.outbound)}`);
+            rules.filter(rule => !!rule.site_rules[0]).map(rule => {
+                rule.site_rules.forEach(site => {
+                    ruleResults.push(`RULE-SET,${site},${t('outboundNames.' + rule.outbound)}`);
+                });
             });
-        });
 
-        rules.filter(rule => !!rule.ip_rules[0]).map(rule => {
-            rule.ip_rules.forEach(ip => {
-                ruleResults.push(`RULE-SET,${ip},${t('outboundNames.' + rule.outbound)},no-resolve`);
+            rules.filter(rule => !!rule.ip_rules[0]).map(rule => {
+                rule.ip_rules.forEach(ip => {
+                    ruleResults.push(`RULE-SET,${ip},${t('outboundNames.' + rule.outbound)},no-resolve`);
+                });
             });
-        });
 
-        rules.filter(rule => !!rule.ip_cidr).map(rule => {
-            rule.ip_cidr.forEach(cidr => {
-                ruleResults.push(`IP-CIDR,${cidr},${t('outboundNames.' + rule.outbound)},no-resolve`);
+            rules.filter(rule => !!rule.ip_cidr).map(rule => {
+                rule.ip_cidr.forEach(cidr => {
+                    ruleResults.push(`IP-CIDR,${cidr},${t('outboundNames.' + rule.outbound)},no-resolve`);
+                });
             });
-        });
+
+            this.config.rules = [...ruleResults];
+            this.config.rules.push(`MATCH,${t('outboundNames.Fall Back')}`);
+        }
 
         // Sanitize proxy-groups: ensure their proxy references exist
         const normalize = (s) => typeof s === 'string' ? s.trim() : s;
@@ -601,14 +732,17 @@ export class ClashConfigBuilder extends BaseConfigBuilder {
             });
         }
 
-        this.config.rules = [...ruleResults];
-        this.config.rules.push(`MATCH,${t('outboundNames.Fall Back')}`);
-
-        return yaml.dump(this.config, {
+        let yamlOutput = yaml.dump(this.config, {
             lineWidth: -1,
             noRefs: true,
             quotingType: '"',
             flowLevel: -1
         });
+
+        // 修复 YAML 对特殊字符的不必要转义（如 \= 应该是 =）
+        yamlOutput = yamlOutput.replace(/\\=/g, '=');
+        yamlOutput = yamlOutput.replace(/\\&/g, '&');
+
+        return yamlOutput;
     }
 }

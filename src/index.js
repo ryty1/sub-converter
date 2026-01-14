@@ -269,7 +269,7 @@ async function handleRequest(request) {
       try {
         const urlObj = new URL(shortUrl);
         const pathParts = urlObj.pathname.split('/');
-        
+
         if (pathParts.length < 3) {
           return new Response(t('invalidShortUrl'), { status: 400 });
         }

@@ -1,4 +1,4 @@
-import {checkStartsWith} from "../utils.js";
+import { checkStartsWith } from "../utils.js";
 // 定义语言包
 const translations = {
   'zh-CN': {
@@ -186,7 +186,7 @@ const translations = {
     invalidJSON: 'Invalid JSON format',
     allJSONValid: 'All JSON rules are valid!',
     jsonValidationErrors: 'JSON validation errors',
-    outboundNames:{
+    outboundNames: {
       'Auto Select': '⚡ Auto Select',
       'Node Select': '🚀 Node Select',
       'Fall Back': '🐟 Fall Back',
@@ -438,13 +438,13 @@ let currentLang = 'zh-CN';
 
 // 设置语言
 export function setLanguage(lang) {
-  if(translations[lang]) {
+  if (translations[lang]) {
     currentLang = lang;
-  } else if(checkStartsWith(lang, 'en')) {
+  } else if (checkStartsWith(lang, 'en')) {
     currentLang = 'en-US';
-  } else if(checkStartsWith(lang, 'fa')) {
+  } else if (checkStartsWith(lang, 'fa')) {
     currentLang = 'fa';
-  } else if(checkStartsWith(lang, 'ru')) {
+  } else if (checkStartsWith(lang, 'ru')) {
     currentLang = 'ru';
   } else {
     currentLang = 'zh-CN';
@@ -455,7 +455,7 @@ export function setLanguage(lang) {
 export function t(key) {
   const keys = key.split('.');
   let value = translations[currentLang];
-  
+
   // 逐级查找翻译值
   for (const k of keys) {
     value = value?.[k];
@@ -481,6 +481,6 @@ export function getDefaultRules() {
 }
 
 // 获取出站集
-export function getOutbounds(){
+export function getOutbounds() {
   return translations[currentLang].outboundNames;
 }
