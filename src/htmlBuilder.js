@@ -244,16 +244,8 @@ const customPathFunctions = () => `
   });
 `;
 
-const advancedOptionsToggleFunction = () => `
-  document.getElementById('advancedToggle').addEventListener('change', function() {
-    const advancedOptions = document.getElementById('advancedOptions');
-    if (this.checked) {
-      advancedOptions.classList.add('show');
-    } else {
-      advancedOptions.classList.remove('show');
-    }
-  });
-`;
+// 高级选项已移除，此函数返回空
+const advancedOptionsToggleFunction = () => ``;
 
 const copyToClipboardFunction = () => `
   function copyToClipboard(elementId) {
@@ -628,101 +620,18 @@ const submitFormFunction = () => `
     subscribeLinksContainer.scrollIntoView({ behavior: 'smooth' });
   }
 
+  // 简化版 parseUrlAndFillForm - 只解析 config 参数
   function parseUrlAndFillForm(url) {
     try {
       const urlObj = new URL(url);
       const params = new URLSearchParams(urlObj.search);
       
-      // Parse base configuration
+      // 只解析 config 参数填充输入框
       const config = params.get('config');
       if (config) {
         const decodedConfig = decodeURIComponent(config);
         document.getElementById('inputTextarea').value = decodedConfig;
       }
-
-      // Parse UserAgent
-      const ua = params.get('ua');
-      if (ua) {
-        document.getElementById('customUA').value = decodeURIComponent(ua);
-      }
-
-      // Parse rule selection
-      const selectedRules = params.get('selectedRules');
-      if (selectedRules) {
-        try {
-          const decodedRules = decodeURIComponent(selectedRules).replace(/^"|"$/g, '');
-          // Check if it's a predefined rule set
-          if (['minimal', 'balanced', 'comprehensive'].includes(decodedRules)) {
-            const predefinedRules = document.getElementById('predefinedRules');
-            predefinedRules.value = decodedRules;
-            // Apply predefined rules to checkboxes
-            const rulesToApply = ${JSON.stringify(PREDEFINED_RULE_SETS)};
-            const checkboxes = document.querySelectorAll('.rule-checkbox');
-            checkboxes.forEach(checkbox => {
-              checkbox.checked = rulesToApply[decodedRules].includes(checkbox.value);
-            });
-          } else {
-            // Handle custom rules (JSON array)
-            const rules = JSON.parse(decodedRules);
-            if (Array.isArray(rules)) {
-              document.getElementById('predefinedRules').value = 'custom';
-              const checkboxes = document.querySelectorAll('.rule-checkbox');
-              checkboxes.forEach(checkbox => {
-                checkbox.checked = rules.includes(checkbox.value);
-              });
-            }
-          }
-        } catch (e) {
-          console.error('Error parsing selected rules:', e);
-        }
-      }
-
-      // Parse custom rules
-      const customRules = params.get('customRules');
-      if (customRules) {
-        try {
-          const rules = JSON.parse(decodeURIComponent(customRules));
-          if (Array.isArray(rules) && rules.length > 0) {
-            // Clear existing custom rules
-            document.querySelectorAll('.custom-rule').forEach(rule => rule.remove());
-            
-            // Switch to JSON view and write rules
-            switchCustomRulesTab('json');
-            const jsonTextarea = document.querySelector('#customRulesJSON textarea');
-            if (jsonTextarea) {
-              jsonTextarea.value = JSON.stringify(rules, null, 2);
-              validateJSONRealtime(jsonTextarea);
-            }
-          }
-        } catch (e) {
-          console.error('Error parsing custom rules:', e);
-        }
-      }
-
-      // Parse group_by_country
-      const groupByCountry = params.get('group_by_country');
-      if (groupByCountry) {
-        document.getElementById('groupByCountry').checked = groupByCountry === 'true';
-      }
-
-      // Parse configuration ID
-      const configId = params.get('configId');
-      if (configId) {
-        // Fetch configuration content
-        fetch(\`/config?type=singbox&id=\${configId}\`)
-          .then(response => response.json())
-          .then(data => {
-            if (data.content) {
-              document.getElementById('configEditor').value = data.content;
-              document.getElementById('configType').value = data.type || 'singbox';
-            }
-          })
-          .catch(error => console.error('Error fetching config:', error));
-      }
-
-      // Show advanced options
-      document.getElementById('advancedToggle').checked = true;
-      document.getElementById('advancedOptions').classList.add('show');
     } catch (e) {
       console.error('Error parsing URL:', e);
     }
@@ -791,95 +700,33 @@ const submitFormFunction = () => `
     });
   });
 
+  // 简化版 loadSavedFormData - 移除高级选项引用
   function loadSavedFormData() {
     const savedInput = localStorage.getItem('inputTextarea');
     if (savedInput) {
       document.getElementById('inputTextarea').value = savedInput;
     }
-
-    const advancedToggle = localStorage.getItem('advancedToggle');
-    if (advancedToggle) {
-      document.getElementById('advancedToggle').checked = advancedToggle === 'true';
-      if (advancedToggle === 'true') {
-        document.getElementById('advancedOptions').classList.add('show');
-      }
-    }
-
-    const groupByCountry = localStorage.getItem('groupByCountry');
-    if (groupByCountry) {
-      document.getElementById('groupByCountry').checked = groupByCountry === 'true';
-    }
-    
-    // Load userAgent
-    const savedUA = localStorage.getItem('userAgent');
-    if (savedUA) {
-      document.getElementById('customUA').value = savedUA;
-    }
-    
-    // Load configEditor and configType
-    const savedConfig = localStorage.getItem('configEditor');
-    const savedConfigType = localStorage.getItem('configType');
-    
-    if (savedConfig) {
-      document.getElementById('configEditor').value = savedConfig;
-    }
-    if (savedConfigType) {
-      document.getElementById('configType').value = savedConfigType;
-    }
     
     const savedCustomPath = localStorage.getItem('customPath');
     if (savedCustomPath) {
-      document.getElementById('customShortCode').value = savedCustomPath;
-    }
-
-    loadSelectedRules();
-  }
-
-  function saveSelectedRules() {
-    const selectedRules = Array.from(document.querySelectorAll('input[name="selectedRules"]:checked'))
-      .map(checkbox => checkbox.value);
-    localStorage.setItem('selectedRules', JSON.stringify(selectedRules));
-    localStorage.setItem('predefinedRules', document.getElementById('predefinedRules').value);
-  }
-
-  function loadSelectedRules() {
-    const savedRules = localStorage.getItem('selectedRules');
-    if (savedRules) {
-      const rules = JSON.parse(savedRules);
-      rules.forEach(rule => {
-        const checkbox = document.querySelector(\`input[name="selectedRules"][value="\${rule}"]\`);
-        if (checkbox) {
-          checkbox.checked = true;
-        }
-      });
-    }
-
-    const savedPredefinedRules = localStorage.getItem('predefinedRules');
-    if (savedPredefinedRules) {
-      document.getElementById('predefinedRules').value = savedPredefinedRules;
+      const customPathEl = document.getElementById('customShortCode');
+      if (customPathEl) customPathEl.value = savedCustomPath;
     }
   }
 
+  // 简化版 - 规则选择已移除，这些函数保留空实现避免报错
+  function saveSelectedRules() {}
+  function loadSelectedRules() {}
+
+  // 简化版 clearFormData - 移除高级选项引用
   function clearFormData() {
     localStorage.removeItem('inputTextarea');
-    localStorage.removeItem('advancedToggle');
-    localStorage.removeItem('selectedRules');
-    localStorage.removeItem('predefinedRules');
-    localStorage.removeItem('configEditor'); 
-    localStorage.removeItem('configType');
-    localStorage.removeItem('userAgent');
-    localStorage.removeItem('groupByCountry');
+    localStorage.removeItem('customPath');
     
     document.getElementById('inputTextarea').value = '';
-    document.getElementById('advancedToggle').checked = false;
-    document.getElementById('advancedOptions').classList.remove('show');
-    document.getElementById('groupByCountry').checked = false;
-    document.getElementById('configEditor').value = '';
-    document.getElementById('configType').value = 'singbox'; 
-    document.getElementById('customUA').value = '';
     
-    localStorage.removeItem('customPath');
-    document.getElementById('customShortCode').value = '';
+    const customPathEl = document.getElementById('customShortCode');
+    if (customPathEl) customPathEl.value = '';
 
     const subscribeLinksContainer = document.getElementById('subscribeLinksContainer');
     subscribeLinksContainer.classList.remove('show');
