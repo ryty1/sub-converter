@@ -69,12 +69,10 @@ const generateCardHeader = () => `
   </div>
 `;
 
-// Form Components
+// Form Components - 简化版，移除高级选项
 const generateForm = () => `
   <form method="POST" id="encodeForm">
     ${generateShareUrlsSection()}
-    ${generateAdvancedOptionsToggle()}
-    ${generateAdvancedOptions()}
     ${generateButtonContainer()}
   </form>
 `;
@@ -603,44 +601,20 @@ const submitFormFunction = () => `
     const formData = new FormData(form);
     const inputString = formData.get('input');
 
-    const userAgent = document.getElementById('customUA').value;
-    const groupByCountry = document.getElementById('groupByCountry').checked;
+    // 使用默认配置
+    const userAgent = 'curl/7.74.0';
     
     // Save form data to localStorage
     localStorage.setItem('inputTextarea', inputString);
-    localStorage.setItem('advancedToggle', document.getElementById('advancedToggle').checked);
-    localStorage.setItem('groupByCountry', groupByCountry);
 
-    // Save UserAgent data to localStorage
-    localStorage.setItem('userAgent', document.getElementById('customUA').value);
-    
-    // Save configEditor and configType to localStorage
-    localStorage.setItem('configEditor', document.getElementById('configEditor').value);
-    localStorage.setItem('configType', document.getElementById('configType').value);
-    
-    let selectedRules;
-    const predefinedRules = document.getElementById('predefinedRules').value;
-    if (predefinedRules !== 'custom') {
-      selectedRules = predefinedRules;
-    } else {
-      selectedRules = Array.from(document.querySelectorAll('input[name="selectedRules"]:checked'))
-        .map(checkbox => checkbox.value);
-    }
-    
-    const configEditor = document.getElementById('configEditor');
-    const configId = new URLSearchParams(window.location.search).get('configId') || '';
+    // 使用默认规则（ACL4SSR 配置已嵌入后端）
+    const selectedRules = 'comprehensive';
+    const customRules = [];
 
-    const customRules = parseCustomRules();
-
-    const configParam = configId ? \`&configId=\${configId}\` : '';
-    const groupByCountryParam = groupByCountry ? '&group_by_country=true' : '';
-    const uaParam = userAgent ? \`&ua=\${encodeURIComponent(userAgent)}\` : '';
-    const selectedRulesParam = (selectedRules && (typeof selectedRules === 'string' || selectedRules.length > 0)) ? \`&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}\` : '';
-    const customRulesParam = (customRules && customRules.length > 0) ? \`&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\` : '';
-    const xrayUrl = \`\${window.location.origin}/xray?config=\${encodeURIComponent(inputString)}\${uaParam}\${configParam}\${groupByCountryParam}\`;
-    const singboxUrl = \`\${window.location.origin}/singbox?config=\${encodeURIComponent(inputString)}\${uaParam}\${selectedRulesParam}\${customRulesParam}\${configParam}\${groupByCountryParam}\`;
-    const clashUrl = \`\${window.location.origin}/clash?config=\${encodeURIComponent(inputString)}\${uaParam}\${selectedRulesParam}\${customRulesParam}\${configParam}\${groupByCountryParam}\`;
-    const surgeUrl = \`\${window.location.origin}/surge?config=\${encodeURIComponent(inputString)}\${uaParam}\${selectedRulesParam}\${customRulesParam}\${configParam}\${groupByCountryParam}\`;
+    const xrayUrl = \`\${window.location.origin}/xray?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}\`;
+    const singboxUrl = \`\${window.location.origin}/singbox?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\`;
+    const clashUrl = \`\${window.location.origin}/clash?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\`;
+    const surgeUrl = \`\${window.location.origin}/surge?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\`;
     document.getElementById('xrayLink').value = xrayUrl;
     document.getElementById('singboxLink').value = singboxUrl;
     document.getElementById('clashLink').value = clashUrl;

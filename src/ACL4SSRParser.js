@@ -1,10 +1,92 @@
 /**
  * ACL4SSR 配置解析器
- * 解析 ACL4SSR 格式的 .ini 配置文件并生成 Clash 配置
+ * 本地嵌入 A4ss.ini 配置，无需远程获取
  */
 
-// 默认的 ACL4SSR 配置 URL
-export const DEFAULT_ACL4SSR_CONFIG_URL = 'https://gh-proxy.com/https://raw.githubusercontent.com/ryty1/ACL4SSR/master/Clash/config/ACL4SSR_ZDY.ini';
+// 本地嵌入的 A4ss.ini 配置内容
+const EMBEDDED_ACL4SSR_CONFIG = `
+[custom]
+ruleset=🎯 全球直连,https://gh-proxy.com/https://raw.githubusercontent.com/cmliu/ACL4SSR/refs/heads/main/Clash/CFnat.list
+ruleset=🎯 全球直连,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/LocalAreaNetwork.list
+ruleset=🎯 全球直连,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/UnBan.list
+ruleset=🛑 全球拦截,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/BanAD.list
+ruleset=🍃 应用净化,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/BanProgramAD.list
+ruleset=🍃 应用净化,https://gh-proxy.com/https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/adobe.list
+ruleset=🍃 应用净化,https://gh-proxy.com/https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/IDM.list
+ruleset=📢 谷歌FCM,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/GoogleFCM.list
+ruleset=🎯 全球直连,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/GoogleCN.list
+ruleset=🎯 全球直连,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/SteamCN.list
+ruleset=Ⓜ️ 微软服务,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Microsoft.list
+ruleset=🍎 苹果服务,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Apple.list
+ruleset=📲 电报信息,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Telegram.list
+ruleset=🤖 OpenAi,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/OpenAi.list
+ruleset=🤖 OpenAi,https://gh-proxy.com/https://raw.githubusercontent.com/juewuy/ShellClash/master/rules/ai.list
+ruleset=🤖 OpenAi,https://gh-proxy.com/https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/Copilot.list
+ruleset=🤖 OpenAi,https://gh-proxy.com/https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/GithubCopilot.list
+ruleset=🤖 OpenAi,https://gh-proxy.com/https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/Claude.list
+ruleset=🛸 Antigravity,https://gh-proxy.com/https://raw.githubusercontent.com/ryty1/ACL4SSR/master/Clash/antigravity.list
+ruleset=📹 油管视频,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/YouTube.list
+ruleset=🎥 奈飞视频,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/Ruleset/Netflix.list
+ruleset=🌍 国外媒体,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ProxyMedia.list
+ruleset=🌍 国外媒体,https://gh-proxy.com/https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/Emby.list
+ruleset=🚀 节点选择,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ProxyLite.list
+ruleset=🚀 节点选择,https://gh-proxy.com/https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/CMBlog.list
+ruleset=🎯 全球直连,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ChinaDomain.list
+ruleset=🎯 全球直连,https://gh-proxy.com/https://raw.githubusercontent.com/ACL4SSR/ACL4SSR/master/Clash/ChinaCompanyIp.list
+ruleset=🎯 全球直连,https://gh-proxy.com/https://raw.githubusercontent.com/cmliu/ACL4SSR/main/Clash/ChinaCompanyDomain.list
+ruleset=🎯 全球直连,https://gh-proxy.com/https://raw.githubusercontent.com/ryty1/ACL4SSR/master/Clash/zdy.list
+ruleset=🎯 全球直连,[]GEOIP,CN
+ruleset=🐟 漏网之鱼,[]FINAL
+
+custom_proxy_group=🚀 节点选择\`select\`[]♻️ 自动选择\`[]☑️ 手动切换\`[]🇭🇰 香港节点\`[]🇲🇴 澳门节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇰🇷 韩国节点\`[]🇺🇸 美国节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇫🇷 法国节点\`[]🇳🇱 荷兰节点\`[]🇷🇺 俄罗斯节点\`[]🇮🇳 印度节点\`[]🇹🇷 土耳其节点\`[]🇨🇦 加拿大节点\`[]🇦🇺 澳洲节点\`[]🇫🇮 芬兰节点\`[]DIRECT
+custom_proxy_group=☑️ 手动切换\`select\`.*
+custom_proxy_group=♻️ 自动选择\`url-test\`.*\`http://www.gstatic.com/generate_204\`300,,50
+custom_proxy_group=📹 油管视频\`select\`[]🚀 节点选择\`[]♻️ 自动选择\`[]☑️ 手动切换\`[]🇭🇰 香港节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇺🇸 美国节点\`[]🇰🇷 韩国节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇫🇷 法国节点\`[]🇮🇳 印度节点\`[]🇦🇺 澳洲节点\`[]DIRECT
+custom_proxy_group=🎥 奈飞视频\`select\`[]🚀 节点选择\`[]♻️ 自动选择\`[]☑️ 手动切换\`[]🇭🇰 香港节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇺🇸 美国节点\`[]🇰🇷 韩国节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇫🇷 法国节点\`[]🇮🇳 印度节点\`[]🇦🇺 澳洲节点\`[]🇨🇦 加拿大节点\`[]DIRECT
+custom_proxy_group=🌍 国外媒体\`select\`[]🚀 节点选择\`[]♻️ 自动选择\`[]☑️ 手动切换\`[]🇭🇰 香港节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇺🇸 美国节点\`[]🇰🇷 韩国节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇫🇷 法国节点\`[]🇮🇳 印度节点\`[]🇦🇺 澳洲节点\`[]DIRECT
+custom_proxy_group=📲 电报信息\`select\`[]🚀 节点选择\`[]🇭🇰 香港节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇺🇸 美国节点\`[]🇰🇷 韩国节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇳🇱 荷兰节点\`[]🇮🇳 印度节点\`[]🇹🇷 土耳其节点\`[]DIRECT
+custom_proxy_group=🤖 OpenAi\`select\`[]🚀 节点选择\`[]♻️ 自动选择\`[]☑️ 手动切换\`[]🇺🇸 美国节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇫🇷 法国节点\`[]🇮🇳 印度节点\`[]🇨🇦 加拿大节点\`[]🇦🇺 澳洲节点\`[]🇳🇱 荷兰节点\`[]🇮🇪 爱尔兰节点\`[]🇫🇮 芬兰节点\`[]🇸🇪 瑞典节点\`[]DIRECT
+custom_proxy_group=🛸 Antigravity\`select\`[]♻️ 自动选择\`[]☑️ 手动切换\`[]🇭🇰 香港节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇺🇸 美国节点\`[]🇰🇷 韩国节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇫🇷 法国节点\`[]🇳🇱 荷兰节点\`[]🇷🇺 俄罗斯节点\`[]🇮🇳 印度节点\`[]🇹🇷 土耳其节点\`[]🇨🇦 加拿大节点\`[]🇦🇺 澳洲节点\`[]🇫🇮 芬兰节点\`[]🇸🇪 瑞典节点\`[]🇨🇭 瑞士节点\`[]DIRECT
+custom_proxy_group=Ⓜ️ 微软服务\`select\`[]🎯 全球直连\`[]🚀 节点选择\`[]🇭🇰 香港节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇺🇸 美国节点\`[]🇰🇷 韩国节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇫🇷 法国节点\`[]🇮🇳 印度节点\`[]🇳🇱 荷兰节点\`[]🇮🇪 爱尔兰节点\`[]DIRECT
+custom_proxy_group=🍎 苹果服务\`select\`[]🚀 节点选择\`[]🎯 全球直连\`[]🇭🇰 香港节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇺🇸 美国节点\`[]🇰🇷 韩国节点\`[]🇬🇧 英国节点\`[]🇮🇳 印度节点\`[]🇦🇺 澳洲节点\`[]DIRECT
+custom_proxy_group=📢 谷歌FCM\`select\`[]🚀 节点选择\`[]🎯 全球直连\`[]♻️ 自动选择\`[]☑️ 手动切换\`[]🇭🇰 香港节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇺🇸 美国节点\`[]🇰🇷 韩国节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇮🇳 印度节点\`[]DIRECT
+custom_proxy_group=🎯 全球直连\`select\`[]DIRECT\`[]🚀 节点选择\`[]♻️ 自动选择\`[]☑️ 手动切换
+custom_proxy_group=🛑 全球拦截\`select\`[]REJECT\`[]DIRECT
+custom_proxy_group=🍃 应用净化\`select\`[]REJECT\`[]DIRECT
+custom_proxy_group=🐟 漏网之鱼\`select\`[]🚀 节点选择\`[]🎯 全球直连\`[]♻️ 自动选择\`[]☑️ 手动切换\`[]🇭🇰 香港节点\`[]🇹🇼 台湾节点\`[]🇯🇵 日本节点\`[]🇸🇬 狮城节点\`[]🇺🇸 美国节点\`[]🇰🇷 韩国节点\`[]🇬🇧 英国节点\`[]🇩🇪 德国节点\`[]🇫🇷 法国节点\`[]🇳🇱 荷兰节点\`[]🇮🇳 印度节点\`[]🇫🇮 芬兰节点\`[]DIRECT
+
+custom_proxy_group=🇭🇰 香港节点\`select\`(港|HK|hk|Hong Kong|HongKong|hongkong|HKG)
+custom_proxy_group=🇲🇴 澳门节点\`select\`(澳门|MO|Macau|macao)
+custom_proxy_group=🇹🇼 台湾节点\`select\`(台|新北|彰化|TW|Taiwan|taipei)
+custom_proxy_group=🇯🇵 日本节点\`select\`(日本|川日|东京|大阪|泉日|埼玉|沪日|深日|[^-]日|JP|Japan|tokyo|osaka)
+custom_proxy_group=🇰🇷 韩国节点\`select\`(韩国|韩|KR|Korea|KOR|首尔|seoul|春川)
+custom_proxy_group=🇸🇬 狮城节点\`select\`(新加坡|坡|狮城|SG|Singapore)
+custom_proxy_group=🇺🇸 美国节点\`select\`(美国|美|波特兰|达拉斯|俄勒冈|凤凰城|费利蒙|硅谷|拉斯维加斯|洛杉矶|圣何塞|圣克拉拉|西雅图|芝加哥|US|USA|United States|ATL|BUF|DFW|EWR|IAD|LAX|MCI|MIA|ORD|PHX|PDX|SEA|SJC)
+custom_proxy_group=🇬🇧 英国节点\`select\`(英国|UK|GB|United Kingdom|Britain|伦敦|London|曼彻斯特)
+custom_proxy_group=🇩🇪 德国节点\`select\`(德国|DE|Germany|法兰克福|柏林|慕尼黑|Frankfurt)
+custom_proxy_group=🇫🇷 法国节点\`select\`(法国|FR|France|巴黎|Paris|马赛)
+custom_proxy_group=🇳🇱 荷兰节点\`select\`(荷兰|NL|Netherlands|阿姆斯特丹|Amsterdam)
+custom_proxy_group=🇷🇺 俄罗斯节点\`select\`(俄罗斯|俄|RU|Russia|莫斯科|圣彼得堡|Moscow)
+custom_proxy_group=🇮🇳 印度节点\`select\`(印度|India|孟买|新德里|Mumbai|Delhi)
+custom_proxy_group=🇹🇷 土耳其节点\`select\`(土耳其|Turkey|伊斯坦布尔|安卡拉)
+custom_proxy_group=🇨🇦 加拿大节点\`select\`(加拿大|CA|Canada|多伦多|温哥华|蒙特利尔)
+custom_proxy_group=🇦🇺 澳洲节点\`select\`(澳洲|澳大利亚|AU|Australia|悉尼|墨尔本|Sydney|Melbourne)
+custom_proxy_group=🇫🇮 芬兰节点\`select\`(芬兰|Finland|赫尔辛基)
+custom_proxy_group=🇸🇪 瑞典节点\`select\`(瑞典|Sweden|斯德哥尔摩)
+custom_proxy_group=🇨🇭 瑞士节点\`select\`(瑞士|Switzerland|苏黎世|日内瓦)
+custom_proxy_group=🇮🇪 爱尔兰节点\`select\`(爱尔兰|Ireland|都柏林)
+
+enable_rule_generator=true
+overwrite_original_rules=true
+`;
+
+/**
+ * 获取嵌入的 ACL4SSR 配置（无需网络请求）
+ * @returns {string} 配置内容
+ */
+export function getEmbeddedACL4SSRConfig() {
+    return EMBEDDED_ACL4SSR_CONFIG;
+}
 
 /**
  * 解析 ACL4SSR .ini 配置文件
@@ -113,161 +195,4 @@ export function matchNodeFilter(nodeName, filter) {
     } catch (e) {
         return false;
     }
-}
-
-/**
- * 获取远程 ACL4SSR 配置
- * @param {string} url - 配置 URL
- * @returns {Promise<string>} 配置内容
- */
-export async function fetchACL4SSRConfig(url = DEFAULT_ACL4SSR_CONFIG_URL) {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch config: ${response.status}`);
-        }
-        return await response.text();
-    } catch (error) {
-        console.error('Error fetching ACL4SSR config:', error);
-        throw error;
-    }
-}
-
-/**
- * 根据 ACL4SSR 配置生成 Clash proxy-groups
- * @param {Array} parsedGroups - 解析后的分组配置
- * @param {Array} proxyNames - 所有代理节点名称列表
- * @returns {Array} Clash 格式的 proxy-groups
- */
-export function generateClashProxyGroups(parsedGroups, proxyNames) {
-    const clashGroups = [];
-
-    for (const group of parsedGroups) {
-        const clashGroup = {
-            name: group.name,
-            type: group.type === 'url-test' ? 'url-test' : 'select'
-        };
-
-        const proxies = [];
-
-        // 添加引用的分组
-        for (const member of group.members) {
-            proxies.push(member);
-        }
-
-        // 如果有筛选条件，添加匹配的节点
-        if (group.filter) {
-            for (const proxyName of proxyNames) {
-                if (matchNodeFilter(proxyName, group.filter)) {
-                    proxies.push(proxyName);
-                }
-            }
-        }
-
-        clashGroup.proxies = proxies;
-
-        // URL 测试分组的额外配置
-        if (group.type === 'url-test' && group.urlTestConfig) {
-            clashGroup.url = group.urlTestConfig.url || 'http://www.gstatic.com/generate_204';
-            clashGroup.interval = group.urlTestConfig.interval || 300;
-            clashGroup.lazy = false;
-        }
-
-        clashGroups.push(clashGroup);
-    }
-
-    return clashGroups;
-}
-
-/**
- * 根据 ACL4SSR 配置生成 Clash rules
- * @param {Array} rulesets - 解析后的规则集
- * @returns {Promise<Array>} Clash 格式的规则
- */
-export async function generateClashRulesFromACL4SSR(rulesets) {
-    const rules = [];
-
-    for (const ruleset of rulesets) {
-        const { group, url } = ruleset;
-
-        // 处理内联规则 (如 []GEOIP,CN)
-        if (url.startsWith('[]')) {
-            const inlineRule = url.substring(2);
-            if (inlineRule === 'FINAL') {
-                rules.push(`MATCH,${group}`);
-            } else {
-                rules.push(`${inlineRule},${group}`);
-            }
-            continue;
-        }
-
-        // 远程规则集需要下载解析
-        try {
-            const response = await fetch(url);
-            if (response.ok) {
-                const content = await response.text();
-                const ruleLines = content.split('\n');
-
-                for (const ruleLine of ruleLines) {
-                    const trimmed = ruleLine.trim();
-                    // 跳过注释和空行
-                    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith(';')) {
-                        continue;
-                    }
-                    // 添加规则并指定分组
-                    if (trimmed.includes(',')) {
-                        // 规则已包含类型，直接添加分组
-                        rules.push(`${trimmed},${group}`);
-                    } else {
-                        // 纯域名，假设为 DOMAIN-SUFFIX
-                        rules.push(`DOMAIN-SUFFIX,${trimmed},${group}`);
-                    }
-                }
-            }
-        } catch (error) {
-            console.warn(`Failed to fetch ruleset from ${url}:`, error);
-        }
-    }
-
-    return rules;
-}
-
-/**
- * 生成 Clash rule-providers 配置
- * @param {Array} rulesets - 解析后的规则集
- * @returns {Object} Clash 格式的 rule-providers
- */
-export function generateClashRuleProviders(rulesets) {
-    const ruleProviders = {};
-    let index = 0;
-
-    for (const ruleset of rulesets) {
-        const { group, url } = ruleset;
-
-        // 跳过内联规则
-        if (url.startsWith('[]')) {
-            continue;
-        }
-
-        // 从 URL 提取规则集名称
-        const urlParts = url.split('/');
-        let name = urlParts[urlParts.length - 1].replace('.list', '').replace('.txt', '');
-
-        // 确保名称唯一
-        if (ruleProviders[name]) {
-            name = `${name}_${index}`;
-        }
-
-        ruleProviders[name] = {
-            type: 'http',
-            behavior: 'classical',
-            url: url,
-            path: `./ruleset/${name}.yaml`,
-            interval: 86400
-        };
-
-        index++;
-    }
-
-    return ruleProviders;
 }
