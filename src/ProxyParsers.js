@@ -701,6 +701,10 @@ class HttpParser {
       let decodedText;
       try {
         decodedText = decodeBase64(text.trim());
+        // Check if the decoded text needs URL decoding (与原版保持一致)
+        if (decodedText.includes('%')) {
+          decodedText = decodeURIComponent(decodedText);
+        }
       } catch (e) {
         decodedText = text;
         // Check if the original text needs URL decoding
