@@ -80,9 +80,25 @@ const translations = {
     jsonValidationErrors: 'JSON验证错误',
     // 规则名称和出站名称的翻译
     outboundNames: {
-      'Auto Select': '⚡ 自动选择',
+      'Auto Select': '♻️ 自动选择',
       'Node Select': '🚀 节点选择',
+      'Manual Switch': '☑️ 手动切换',
       'Fall Back': '🐟 漏网之鱼',
+      // A4ss.ini 策略组
+      '全球直连': '🎯 全球直连',
+      '全球拦截': '🛑 全球拦截',
+      '应用净化': '🍃 应用净化',
+      '谷歌FCM': '📢 谷歌FCM',
+      'OpenAi': '🤖 OpenAi',
+      'Antigravity': '🛸 Antigravity',
+      '油管视频': '📹 油管视频',
+      '奈飞视频': '🎥 奈飞视频',
+      '国外媒体': '🌍 国外媒体',
+      '电报信息': '📲 电报信息',
+      '微软服务': 'Ⓜ️ 微软服务',
+      '苹果服务': '🍎 苹果服务',
+      '漏网之鱼': '🐟 漏网之鱼',
+      // 原有规则
       'Ad Block': '🛑 广告拦截',
       'AI Services': '💬 AI 服务',
       'Bilibili': '📺 哔哩哔哩',
@@ -101,7 +117,6 @@ const translations = {
       'Financial': '💰 金融服务',
       'Cloud Services': '☁️ 云服务',
       'Non-China': '🌐 非中国',
-      'Manual Switch': '🖐️ 手动切换',
       'GLOBAL': 'GLOBAL'
     },
     groupByCountry: '按国家分组',

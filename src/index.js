@@ -1,6 +1,7 @@
 import { SingboxConfigBuilder } from './SingboxConfigBuilder.js';
 import { generateHtml } from './htmlBuilder.js';
 import { ClashConfigBuilder } from './ClashConfigBuilder.js';
+import { A4ssClashConfigBuilder } from './A4ssClashConfigBuilder.js';
 import { SurgeConfigBuilder } from './SurgeConfigBuilder.js';
 import { encodeBase64, GenerateWebPath, tryDecodeSubscriptionLines } from './utils.js';
 import { PREDEFINED_RULE_SETS } from './config.js';
@@ -21,7 +22,7 @@ async function handleRequest(request) {
       return new Response(generateHtml('', '', '', '', url.origin), {
         headers: { 'Content-Type': 'text/html' }
       });
-    } else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge')) {
+    } else if (url.pathname.startsWith('/singbox') || url.pathname.startsWith('/clash') || url.pathname.startsWith('/surge') || url.pathname.startsWith('/clash-a4ss')) {
       const inputString = url.searchParams.get('config');
       let selectedRules = url.searchParams.get('selectedRules');
       let customRules = url.searchParams.get('customRules');
@@ -77,6 +78,9 @@ async function handleRequest(request) {
       let configBuilder;
       if (url.pathname.startsWith('/singbox')) {
         configBuilder = new SingboxConfigBuilder(inputString, selectedRules, customRules, baseConfig, lang, userAgent, groupByCountry);
+      } else if (url.pathname.startsWith('/clash-a4ss')) {
+        // 使用 A4ss 风格的 Clash 配置
+        configBuilder = new A4ssClashConfigBuilder(inputString, baseConfig, lang, userAgent);
       } else if (url.pathname.startsWith('/clash')) {
         configBuilder = new ClashConfigBuilder(inputString, selectedRules, customRules, baseConfig, lang, userAgent, groupByCountry);
       } else {

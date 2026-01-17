@@ -634,13 +634,10 @@ const submitFormFunction = () => `
 
     const configParam = configId ? \`&configId=\${configId}\` : '';
     const groupByCountryParam = groupByCountry ? '&group_by_country=true' : '';
-    const uaParam = userAgent ? \`&ua=\${encodeURIComponent(userAgent)}\` : '';
-    const selectedRulesParam = (selectedRules && (typeof selectedRules === 'string' || selectedRules.length > 0)) ? \`&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}\` : '';
-    const customRulesParam = (customRules && customRules.length > 0) ? \`&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\` : '';
-    const xrayUrl = \`\${window.location.origin}/xray?config=\${encodeURIComponent(inputString)}\${uaParam}\${configParam}\${groupByCountryParam}\`;
-    const singboxUrl = \`\${window.location.origin}/singbox?config=\${encodeURIComponent(inputString)}\${uaParam}\${selectedRulesParam}\${customRulesParam}\${configParam}\${groupByCountryParam}\`;
-    const clashUrl = \`\${window.location.origin}/clash?config=\${encodeURIComponent(inputString)}\${uaParam}\${selectedRulesParam}\${customRulesParam}\${configParam}\${groupByCountryParam}\`;
-    const surgeUrl = \`\${window.location.origin}/surge?config=\${encodeURIComponent(inputString)}\${uaParam}\${selectedRulesParam}\${customRulesParam}\${configParam}\${groupByCountryParam}\`;
+    const xrayUrl = \`\${window.location.origin}/xray?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}\${configParam}\${groupByCountryParam}\`;
+    const singboxUrl = \`\${window.location.origin}/singbox?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\${configParam}\${groupByCountryParam}\`;
+    const clashUrl = \`\${window.location.origin}/clash?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\${configParam}\${groupByCountryParam}\`;
+    const surgeUrl = \`\${window.location.origin}/surge?config=\${encodeURIComponent(inputString)}&ua=\${encodeURIComponent(userAgent)}&selectedRules=\${encodeURIComponent(JSON.stringify(selectedRules))}&customRules=\${encodeURIComponent(JSON.stringify(customRules))}\${configParam}\${groupByCountryParam}\`;
     document.getElementById('xrayLink').value = xrayUrl;
     document.getElementById('singboxLink').value = singboxUrl;
     document.getElementById('clashLink').value = clashUrl;
